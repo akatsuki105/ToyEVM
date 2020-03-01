@@ -22,6 +22,20 @@ impl VM {
         }
     }
 
+    fn add(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1 + operand2;
+        self.push(result);
+    }
+
+    fn pop(&mut self) -> U256 {
+        let value = self.stack.pop().unwrap();
+        self.sp -= 1;
+        return value;
+    }
+
     fn push(&mut self, value: U256) {
         self.stack.push(value);
         self.sp += 1;
@@ -43,7 +57,7 @@ impl VM {
 
         match opcode {
             1 => {
-                // ADD
+                self.add();
             }
             60 => {
                 self.push1();
@@ -81,4 +95,16 @@ fn test_push1() {
     assert_eq!(vm.gas, 9999999997);
     assert_eq!(vm.sp, 1);
     assert_eq!(vm.stack, vec![5.into()]);
+}
+
+#[test]
+fn test_add() {
+    let mut vm = VM::new(vec![60, 05, 60, 04, 01]);
+    vm.exec();
+    vm.exec();
+    vm.exec();
+    assert_eq!(vm.pc, 5);
+    assert_eq!(vm.gas, 9999999991);
+    assert_eq!(vm.sp, 1);
+    assert_eq!(vm.stack, vec![9.into()]);
 }
