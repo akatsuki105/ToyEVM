@@ -1,10 +1,20 @@
 # 設計
 
 ## 目標
-EVMバイトコードを実行できるインタプリタ or EVMバイトコードを機械語にコンパイルするコンパイラ を作る  
-高級言語 => EVMバイトコード部分は作らない あくまでVMのみ
+
+<img src="https://i.stack.imgur.com/afWDt.jpg" />
+
+この右半分を作る。  
+具体的には、
+ - EVMバイトコードを実行できるインタプリタ
+ - EVMバイトコード実行の結果変化していくEVMのstate
+
+の2つを作る  
+ネットワーク部分やpow部分は作らない
 
 ## モジュール構成
-
-- インタプリタ型 parser + evaluator
-- コンパイラ型 parser + translator
+- インタプリタ interpreter
+    - parser バイトコードをパースする
+    - evaluator パースしたバイトコードを実行し必要に応じてstateを変更する
+- ステート state  
+ステートを表す構造体を持ち、ステート取得や変更のAPIを提供する
