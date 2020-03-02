@@ -100,6 +100,10 @@ impl VM {
     fn op_return(&mut self) {
         panic!("op_return: not implement error");
     }
+
+    fn op_calldataload(&mut self) {
+        // calldataのpの位置からp+32の位置までの32byteのデータをstackの先頭に積む
+    }
 }
 
 #[test]
