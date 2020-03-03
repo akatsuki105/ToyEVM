@@ -3,6 +3,7 @@ extern crate hex;
 
 use ethereum_types::{H160, U256};
 
+/// トランザクションを実行するのに必要となる環境変数
 #[allow(dead_code)]
 pub struct Environment {
     code_owner: H160, // 実行するコントラクトのオーナー
@@ -15,6 +16,7 @@ pub struct Environment {
 
 #[allow(dead_code)]
 impl Environment {
+    /// 環境変数のコンストラクタ
     pub fn new(code_owner: H160, sender: H160, gas_price: usize, value: usize) -> Self {
         return Self {
             code_owner,
@@ -26,28 +28,32 @@ impl Environment {
         }
     }
 
+    /// コードをセットする
     pub fn set_code(&mut self, code: Vec<u8>) {
         self.code = code;
     }
 
+    /// インプットデータをセットする
     pub fn set_input(&mut self, input: Vec<u8>) {
         self.input = input;
     }
 }
 
+/// EVMインスタンス
 #[allow(dead_code)]
 pub struct VM {
-    env: Environment,
-    pc: usize,
-    gas: usize,
-    sp: usize,
-    stack: Vec<U256>,
-    memory: Vec<u8>,
+    env: Environment, // 環境変数
+    pc: usize, // Program Counter
+    gas: usize, // gas残量
+    sp: usize, // スタックポインタ
+    stack: Vec<U256>, // トランザクションのライフサイクルの間保持される一時的なスタック領域
+    memory: Vec<u8>, // トランザクションのライフサイクルの間保持される一時的なメモリ領域
 }
 
 /// Opcodeの実行で使われる汎用的な関数を実装している
 #[allow(dead_code)]
 impl VM {
+    /// コンストラクタ gasは10000000000とする
     pub fn new(env: Environment) -> Self {
         Self {
             env,
@@ -59,21 +65,25 @@ impl VM {
         }
     }
 
+    /// スタックへのpush
     fn push(&mut self, value: U256) {
         self.stack.push(value);
         self.sp += 1;
     }
 
+    /// スタックからのpop
     fn pop(&mut self) -> U256 {
         let value = self.stack.pop().unwrap();
         self.sp -= 1;
         return value;
     }
 
+    /// EVMバイトコードを1命令実行する
     fn exec(&mut self) {
         let opcode = &self.env.code[self.pc];
         self.pc += 1;
 
+        // opcodeに対応するハンドラを呼び出す
         match opcode {
             0x01 => self.op_add(),
             0x03 => self.op_sub(),
@@ -98,6 +108,7 @@ impl VM {
         }
     }
 
+    /// トランザクションが終了するまでexecを繰り返す
     pub fn exec_transaction(&mut self) {
         loop {
             if self.pc >= self.env.code.len() {
@@ -112,6 +123,7 @@ impl VM {
 /// 具体的なOpcodeハンドラの実装
 #[allow(dead_code)]
 impl VM {
+    /// operand1(スタック1番目) + operand2(スタック2番目)
     fn op_add(&mut self) {
         self.consume_gas(3);
         let operand1 = self.pop();
@@ -120,6 +132,7 @@ impl VM {
         self.push(result);
     }
 
+    /// operand1(スタック1番目) - operand2(スタック2番目)
     fn op_sub(&mut self) {
         self.consume_gas(3);
         let operand1 = self.pop();
@@ -128,6 +141,7 @@ impl VM {
         self.push(result);
     }
 
+    /// lengthバイトpushする
     fn op_push(&mut self, length: usize) {
         let mut operand = [0; 32];
         for i in 0..length {
@@ -146,19 +160,22 @@ impl VM {
         self.op_push(2);
     }
 
+    /// スタックからstart, valueをpop
+    /// startを先頭アドレスしてstart+32までの32byteのメモリ領域にvalueを格納する
     fn op_mstore(&mut self) {
         self.consume_gas(6);
         let address = self.pop().as_u32() as usize;
-        let operand = self.pop();
-        let bytes: [u8; 32] = operand.into();
+        let value = self.pop();
+        let bytes: [u8; 32] = value.into();
         for (i, b) in bytes.iter().enumerate() {
             self.memory.insert(address+i, *b);
         }
     }
 
+    /// スタックからpopしたstartを先頭アドレスしてstart+32までの32byteの値をメモリからロード
+    /// ロードした値をstackの先頭にpush
     fn op_mload(&mut self) {
         self.consume_gas(3);
-        // startを先頭アドレスしてstart+32までの32byteの値をロード
         let start = self.pop().as_u32() as usize;
         let mut bytes: [u8; 32] = [0; 32];
         for i in 0..32 {
@@ -174,7 +191,7 @@ impl VM {
         panic!("op_return: not implement error");
     }
 
-    /// スタックからpopした値をstartとしてinputのstartの位置からstart+32の位置までの32byteのデータをstackの先頭に積む
+    /// スタックからpopした値をstartとしてinputのstartの位置からstart+32の位置までの32byteのデータをstackの先頭にpush
     fn op_calldataload(&mut self) {
         self.consume_gas(3);
         let start = self.pop().as_u32() as usize;
@@ -188,6 +205,7 @@ impl VM {
         self.consume_gas(1);
     }
 
+    /// スタックからdestinationをpopしてジャンプ
     fn op_jump(&mut self) {
         self.consume_gas(8);
         let destination = self.pop().as_u32() as usize;
@@ -197,10 +215,11 @@ impl VM {
             panic!("op_jump: destination must be JUMPDEST");
         }
 
-        // ジャンプする
         self.pc = destination + 1; // TODO: +1が必要か調査する
     }
 
+    /// スタックからdestination, conditionをpop
+    /// conditionが0以外ならdestinationにジャンプ
     fn op_jumpi(&mut self) {
         self.consume_gas(10);
         let destination = self.pop().as_u32() as usize;
@@ -211,9 +230,8 @@ impl VM {
             panic!("op_jumpi: destination must be JUMPDEST");
         }
 
-        // jumpiはconditionか0ならジャンプする
+        // conditionか0ならジャンプする
         if condition != 0 {
-            // ジャンプする
             self.pc = destination + 1; // TODO: +1が必要か調査する
         }
     }
