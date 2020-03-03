@@ -1,10 +1,43 @@
 extern crate ethereum_types;
+extern crate hex;
 
-use ethereum_types::{U256};
+use ethereum_types::{H160, U256};
+
+#[allow(dead_code)]
+pub struct Environment {
+    code_owner: H160, // 実行するコントラクトのオーナー
+    sender: H160, // トランザクションの送信者
+    gas_price: usize, // gasのETHレート
+    value: usize, // トランザクションに添付されたEth
+    code: Vec<u8>, // 実行されるEVMバイトコード
+    input: Vec<u8>, // トランザクションに渡されるデータ(solidityでは引数として渡される)
+}
+
+#[allow(dead_code)]
+impl Environment {
+    pub fn new(code_owner: H160, sender: H160, gas_price: usize, value: usize) -> Self {
+        return Self {
+            code_owner,
+            sender,
+            gas_price,
+            value,
+            code: Default::default(),
+            input: Default::default(),
+        }
+    }
+
+    pub fn set_code(&mut self, code: Vec<u8>) {
+        self.code = code;
+    }
+
+    pub fn set_input(&mut self, input: Vec<u8>) {
+        self.input = input;
+    }
+}
 
 #[allow(dead_code)]
 pub struct VM {
-    code: Vec<u8>,
+    env: Environment,
     pc: usize,
     gas: usize,
     sp: usize,
@@ -12,11 +45,12 @@ pub struct VM {
     memory: Vec<u8>,
 }
 
+/// Opcodeの実行で使われる汎用的な関数を実装している
 #[allow(dead_code)]
 impl VM {
-    pub fn new(code: Vec<u8>) -> Self {
+    pub fn new(env: Environment) -> Self {
         Self {
-            code,
+            env,
             pc: 0,
             gas: 10000000000,
             sp: 0,
@@ -36,8 +70,8 @@ impl VM {
         return value;
     }
 
-    pub fn exec(&mut self) {
-        let opcode = &self.code[self.pc];
+    fn exec(&mut self) {
+        let opcode = &self.env.code[self.pc];
         self.pc += 1;
 
         match opcode {
@@ -57,8 +91,19 @@ impl VM {
             panic!("consume_gas: There is a shortage of gas.");
         }
     }
+
+    pub fn exec_transaction(&mut self) {
+        loop {
+            if self.pc >= self.env.code.len() {
+                break;
+            }
+
+            self.exec();
+        }
+    }
 }
 
+/// 具体的なOpcodeハンドラの実装
 #[allow(dead_code)]
 impl VM {
     fn op_add(&mut self) {
@@ -72,7 +117,7 @@ impl VM {
     fn op_push(&mut self, length: usize) {
         let mut operand = [0; 32];
         for i in 0..length {
-            operand[32-length+i] = self.code[self.pc];
+            operand[32-length+i] = self.env.code[self.pc];
             self.pc += 1;
         }
         self.consume_gas(3);
@@ -106,10 +151,17 @@ impl VM {
     }
 }
 
+fn str_to_bytes(src: &str) -> Vec<u8> {
+    let bytes = hex::decode(src).expect("str_to_bytes: decoding failed");
+    return bytes;
+}
+
 #[test]
 fn test_new() {
-    let vm = VM::new(vec![0x60, 0x05, 0x60, 0x04, 0x01]);
-    assert_eq!(vm.code, vec![0x60, 0x05, 0x60, 0x04, 0x01]);
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6005600401"));
+    let vm = VM::new(env);
+    assert_eq!(vm.env.code, vec![0x60, 0x05, 0x60, 0x04, 0x01]);
     assert_eq!(vm.pc, 0);
     assert_eq!(vm.gas, 10000000000);
     assert_eq!(vm.sp, 0);
@@ -118,8 +170,10 @@ fn test_new() {
 
 #[test]
 fn test_push1() {
-    let mut vm = VM::new(vec![0x60, 0x05]);
-    vm.exec(); // PUSH1 5
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6005"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
     assert_eq!(vm.pc, 2);
     assert_eq!(vm.gas, 9999999997);
     assert_eq!(vm.sp, 1);
@@ -128,10 +182,10 @@ fn test_push1() {
 
 #[test]
 fn test_add() {
-    let mut vm = VM::new(vec![0x60, 0x05, 0x60, 0x04, 0x01]);
-    vm.exec(); // PUSH1 5
-    vm.exec(); // PUSH1 4
-    vm.exec(); // ADD
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6005600401"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
@@ -140,12 +194,10 @@ fn test_add() {
 
 #[test]
 fn test_mstore() {
-    let mut vm = VM::new(vec![0x60, 0x05, 0x60, 0x04, 0x01, 0x60, 0x00, 0x52]);
-    vm.exec(); // PUSH1 5
-    vm.exec(); // PUSH1 4
-    vm.exec(); // ADD
-    vm.exec(); // PUSH1 0
-    vm.exec(); // MSTORE
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6005600401600052"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
     assert_eq!(vm.pc, 8);
     assert_eq!(vm.gas, 9999999982);
     assert_eq!(vm.sp, 0);
@@ -154,10 +206,10 @@ fn test_mstore() {
 
 #[test]
 fn test_add2() {
-    let mut vm = VM::new(vec![0x61, 0x01, 0x01, 0x61, 0x01, 0x02, 0x01]);
-    vm.exec(); // PUSH2 101
-    vm.exec(); // PUSH2 102
-    vm.exec(); // ADD
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("61010161010201"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
     assert_eq!(vm.pc, 7);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);

@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 ethereum-types = "0.8.0"
+hex = "0.4.2"
