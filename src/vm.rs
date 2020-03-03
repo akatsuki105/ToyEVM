@@ -76,14 +76,17 @@ impl VM {
 
         match opcode {
             0x01 => self.op_add(),
-            0x02 => self.op_sub(),
+            0x03 => self.op_sub(),
             0x35 => self.op_calldataload(),
             0x51 => self.op_mload(),
             0x52 => self.op_mstore(),
+            0x56 => self.op_jump(),
+            0x57 => self.op_jumpi(),
+            0x5b => self.op_jumpdest(),
             0x60 => self.op_push1(),
             0x61 => self.op_push2(),
             0xf3 => self.op_return(),
-            _ => panic!("exec: invalid opcode."),
+            _ => panic!("exec: invalid opcode. PC: {} Opcode: {}", self.pc-1, opcode),
         }
     }
 
@@ -178,6 +181,42 @@ impl VM {
         let bytes: [u8; 32] = slice_to_array(&self.env.input[start..start+32]);
         self.push(bytes.into());
     }
+
+    /// 動的ジャンプを行う際にスタックからpopした値が示すアドレスにジャンプするが、そのアドレスではこのop_jumpdestがオペコードでなければならない
+    /// このオペコードはそのマーカーとなるだけで単体では意味を持たない
+    fn op_jumpdest(&mut self) {
+        self.consume_gas(1);
+    }
+
+    fn op_jump(&mut self) {
+        self.consume_gas(8);
+        let destination = self.pop().as_u32() as usize;
+        
+        // ジャンプ先のアドレスのオペコードはJUMPDESTでなければならない
+        if self.env.code[destination] != 0x5b {
+            panic!("op_jump: destination must be JUMPDEST");
+        }
+
+        // ジャンプする
+        self.pc = destination + 1; // TODO: +1が必要か調査する
+    }
+
+    fn op_jumpi(&mut self) {
+        self.consume_gas(10);
+        let destination = self.pop().as_u32() as usize;
+        let condition = self.pop().as_u32() as usize;
+        
+        // ジャンプ先のアドレスのオペコードはJUMPDESTでなければならない
+        if self.env.code[destination] != 0x5b {
+            panic!("op_jumpi: destination must be JUMPDEST");
+        }
+
+        // jumpiはconditionか0ならジャンプする
+        if condition != 0 {
+            // ジャンプする
+            self.pc = destination + 1; // TODO: +1が必要か調査する
+        }
+    }
 }
 
 fn str_to_bytes(src: &str) -> Vec<u8> {
@@ -236,7 +275,7 @@ fn test_add() {
 #[test]
 fn test_sub() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6004600502"));
+    env.set_code(str_to_bytes("6004600503"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
@@ -293,4 +332,18 @@ fn test_calldataload() {
     assert_eq!(vm.gas, 9999999985);
     assert_eq!(vm.sp, 1);
     assert_eq!(vm.stack, vec![0x09.into()]);
+}
+
+#[test]
+fn test_jumpi() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6000356000525b600160005103600052600051600657"));
+    env.set_input(str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    let mut vm = VM::new(env);
+    for _ in 0..14 {
+        vm.exec();
+    }
+    assert_eq!(vm.pc, 21); // jumpi
+    vm.exec(); // ここでジャンプ
+    assert_eq!(vm.pc, 7);
 }
