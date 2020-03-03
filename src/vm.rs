@@ -77,6 +77,7 @@ impl VM {
         match opcode {
             0x01 => self.op_add(),
             0x35 => self.op_calldataload(),
+            0x51 => self.op_mload(),
             0x52 => self.op_mstore(),
             0x60 => self.op_push1(),
             0x61 => self.op_push2(),
@@ -141,6 +142,20 @@ impl VM {
         for (i, b) in bytes.iter().enumerate() {
             self.memory.insert(address+i, *b);
         }
+    }
+
+    fn op_mload(&mut self) {
+        self.consume_gas(3);
+        // startを先頭アドレスしてstart+32までの32byteの値をロード
+        let start = self.pop().as_u32() as usize;
+        let mut bytes: [u8; 32] = [0; 32];
+        for i in 0..32 {
+            let b = self.memory[start+i];
+            bytes[i] = b;
+        }
+        
+        // stackにpush
+        self.push(bytes.into());
     }
 
     fn op_return(&mut self) {
@@ -219,6 +234,18 @@ fn test_mstore() {
     assert_eq!(vm.gas, 9999999982);
     assert_eq!(vm.sp, 0);
     assert_eq!(vm.memory[0x1f], 0x09);
+}
+
+#[test]
+fn test_mload() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6005600401600052600051"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 11);
+    assert_eq!(vm.gas, 9999999976);
+    assert_eq!(vm.sp, 1);
+    assert_eq!(vm.stack, vec![0x09.into()]);
 }
 
 #[test]
