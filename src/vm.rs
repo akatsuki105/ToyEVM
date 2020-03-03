@@ -76,6 +76,7 @@ impl VM {
 
         match opcode {
             0x01 => self.op_add(),
+            0x02 => self.op_sub(),
             0x35 => self.op_calldataload(),
             0x51 => self.op_mload(),
             0x52 => self.op_mstore(),
@@ -113,6 +114,14 @@ impl VM {
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 + operand2;
+        self.push(result);
+    }
+
+    fn op_sub(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1 - operand2;
         self.push(result);
     }
 
@@ -222,6 +231,18 @@ fn test_add() {
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
     assert_eq!(vm.stack, vec![9.into()]);
+}
+
+#[test]
+fn test_sub() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6004600502"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 5);
+    assert_eq!(vm.gas, 9999999991);
+    assert_eq!(vm.sp, 1);
+    assert_eq!(vm.stack, vec![1.into()]);
 }
 
 #[test]
