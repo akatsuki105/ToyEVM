@@ -76,6 +76,7 @@ impl VM {
 
         match opcode {
             0x01 => self.op_add(),
+            0x35 => self.op_calldataload(),
             0x52 => self.op_mstore(),
             0x60 => self.op_push1(),
             0x61 => self.op_push2(),
@@ -146,14 +147,30 @@ impl VM {
         panic!("op_return: not implement error");
     }
 
+    /// スタックからpopした値をstartとしてinputのstartの位置からstart+32の位置までの32byteのデータをstackの先頭に積む
     fn op_calldataload(&mut self) {
-        // calldataのpの位置からp+32の位置までの32byteのデータをstackの先頭に積む
+        self.consume_gas(3);
+        let start = self.pop().as_u32() as usize;
+        let bytes: [u8; 32] = slice_to_array(&self.env.input[start..start+32]);
+        self.push(bytes.into());
     }
 }
 
 fn str_to_bytes(src: &str) -> Vec<u8> {
     let bytes = hex::decode(src).expect("str_to_bytes: decoding failed");
     return bytes;
+}
+
+fn slice_to_array(s: &[u8]) -> [u8; 32] {
+    if s.len() != 32 {
+        panic!("slice_to_array: length must be 32");
+    }
+
+    let mut result = [0; 32];
+    for i in 0..32 {
+        result[i] = s[i];
+    }
+    return result;
 }
 
 #[test]
@@ -214,4 +231,18 @@ fn test_add2() {
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
     assert_eq!(vm.stack, vec![0x0203.into()]);
+}
+
+
+#[test]
+fn test_calldataload() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("60003560203501"));
+    env.set_input(str_to_bytes("00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000004"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 7);
+    assert_eq!(vm.gas, 9999999985);
+    assert_eq!(vm.sp, 1);
+    assert_eq!(vm.stack, vec![0x09.into()]);
 }
