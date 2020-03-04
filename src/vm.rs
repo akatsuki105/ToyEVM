@@ -88,7 +88,10 @@ impl VM {
             0x00 => self.op_stop(),
             0x01 => self.op_add(),
             0x03 => self.op_sub(),
+            0x04 => self.op_div(),
+            0x0a => self.op_exp(),
             0x35 => self.op_calldataload(),
+            0x36 => self.op_calldatasize(),
             0x51 => self.op_mload(),
             0x52 => self.op_mstore(),
             0x56 => self.op_jump(),
@@ -143,6 +146,24 @@ impl VM {
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 - operand2;
+        self.push(result);
+    }
+
+    /// operand1(スタック1番目) // operand2(スタック2番目)
+    fn op_div(&mut self) {
+        self.consume_gas(5);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1 / operand2;
+        self.push(result);
+    }
+
+    /// operand1(スタック1番目) ** operand2(スタック2番目)
+    fn op_exp(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1.pow(operand2);
         self.push(result);
     }
 
@@ -207,12 +228,19 @@ impl VM {
         panic!("op_return: not implement error");
     }
 
-    /// スタックからpopした値をstartとしてinputのstartの位置からstart+32の位置までの32byteのデータをstackの先頭にpush
+    /// スタックからpopした値をstartとしてinputのstartの位置からstart+32の位置までの32byteのデータをstackにpush
     fn op_calldataload(&mut self) {
         self.consume_gas(3);
         let start = self.pop().as_u32() as usize;
-        let bytes: [u8; 32] = slice_to_array(&self.env.input[start..start+32]);
+        let bytes: [u8; 32] = slice_to_array(&self.env.input[start..]);
         self.push(bytes.into());
+    }
+
+    /// inputに格納されたデータサイズをstackにpush
+    fn op_calldatasize(&mut self) {
+        self.consume_gas(2);
+        let size = self.env.input.len();
+        self.push(size.into());
     }
 
     /// 動的ジャンプを行う際にスタックからpopした値が示すアドレスにジャンプするが、そのアドレスではこのop_jumpdestがオペコードでなければならない
@@ -259,13 +287,15 @@ fn str_to_bytes(src: &str) -> Vec<u8> {
 }
 
 fn slice_to_array(s: &[u8]) -> [u8; 32] {
-    if s.len() != 32 {
-        panic!("slice_to_array: length must be 32");
-    }
-
     let mut result = [0; 32];
-    for i in 0..32 {
-        result[i] = s[i];
+    if s.len() < 32 {
+        for (i, b) in s.iter().enumerate() {
+            result[i] = *b;
+        }
+    } else {
+        for i in 0..32 {
+            result[i] = s[i];
+        }
     }
     return result;
 }
@@ -319,6 +349,30 @@ fn test_sub() {
 }
 
 #[test]
+fn test_div() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6003600604"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 5);
+    assert_eq!(vm.gas, 9999999989);
+    assert_eq!(vm.sp, 1);
+    assert_eq!(vm.stack, vec![2.into()]);
+}
+
+#[test]
+fn test_exp() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("600360020a"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 5);
+    assert_eq!(vm.gas, 9999999991);
+    assert_eq!(vm.sp, 1);
+    assert_eq!(vm.stack, vec![8.into()]);
+}
+
+#[test]
 fn test_mstore() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(str_to_bytes("6005600401600052"));
@@ -369,6 +423,19 @@ fn test_calldataload() {
 }
 
 #[test]
+fn test_calldatasize() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("36"));
+    env.set_input(str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 1);
+    assert_eq!(vm.gas, 9999999998);
+    assert_eq!(vm.sp, 1);
+    assert_eq!(vm.stack, vec![32.into()]);
+}
+
+#[test]
 fn test_jumpi() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(str_to_bytes("6000356000525b600160005103600052600051600657"));
@@ -380,26 +447,6 @@ fn test_jumpi() {
     assert_eq!(vm.pc, 21); // jumpi
     vm.exec(); // ここでジャンプ
     assert_eq!(vm.pc, 7);
-}
-
-#[test]
-fn test_jumpi2() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6000355b6001900380600357"));
-    env.set_input(str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
-    let mut vm = VM::new(env);
-    for _ in 0..8 {
-        vm.exec();
-    }
-    assert_eq!(vm.pc, 11); // jumpi
-    vm.exec(); // ここでジャンプ
-    assert_eq!(vm.pc, 4);
-    for _ in 0..5 {
-        vm.exec();
-    }
-    assert_eq!(vm.pc, 11); // jumpi
-    vm.exec(); // ここでジャンプ
-    assert_eq!(vm.pc, 4);
 }
 
 #[test]
@@ -424,4 +471,51 @@ fn test_swap1() {
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 2);
     assert_eq!(vm.stack, vec![0x04.into(), 0x05.into()]);
+}
+
+#[test]
+fn test_loop() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6000355b6001900380600357"));
+    env.set_input(str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    let mut vm = VM::new(env);
+    for _ in 0..8 {
+        vm.exec();
+    }
+    assert_eq!(vm.pc, 11); // jumpi
+    vm.exec(); // ここでジャンプ
+    assert_eq!(vm.pc, 4);
+    for _ in 0..5 {
+        vm.exec();
+    }
+    assert_eq!(vm.pc, 11); // jumpi
+    vm.exec(); // ここでジャンプ
+    assert_eq!(vm.pc, 4);
+}
+
+#[test]
+fn test_loop2() {
+    /*
+        0      CALLDATASIZE gas: 10000000000 - 2
+        1      PUSH1  => 20
+        3      SUB
+        4      PUSH2  => 0100
+        7      EXP
+        8      PUSH1  => 00
+        10     CALLDATALOAD
+        11     DIV
+        12     JUMPDEST gas: 9999999975 - 1
+        13     PUSH1  => 01 gas: 9999999974 - 3
+        15     SWAP1 gas: 9999999971 - 3
+        16     SUB gas: 9999999968 - 3
+        17     DUP1 gas: 9999999965 - 3
+        18     PUSH1  => 0c gas: 9999999962 - 3
+        20     JUMPI gas: 9999999959 - 3
+     */
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("366020036101000a600035045b6001900380600c57"));
+    env.set_input(str_to_bytes("05"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 21);
 }
