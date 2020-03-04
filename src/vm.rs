@@ -495,27 +495,11 @@ fn test_loop() {
 
 #[test]
 fn test_loop2() {
-    /*
-        0      CALLDATASIZE gas: 10000000000 - 2
-        1      PUSH1  => 20
-        3      SUB
-        4      PUSH2  => 0100
-        7      EXP
-        8      PUSH1  => 00
-        10     CALLDATALOAD
-        11     DIV
-        12     JUMPDEST gas: 9999999975 - 1
-        13     PUSH1  => 01 gas: 9999999974 - 3
-        15     SWAP1 gas: 9999999971 - 3
-        16     SUB gas: 9999999968 - 3
-        17     DUP1 gas: 9999999965 - 3
-        18     PUSH1  => 0c gas: 9999999962 - 3
-        20     JUMPI gas: 9999999959 - 3
-     */
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(str_to_bytes("366020036101000a600035045b6001900380600c57"));
-    env.set_input(str_to_bytes("05"));
+    env.set_input(str_to_bytes("01"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 21);
+    assert_eq!(vm.gas, 9999999949);
 }
