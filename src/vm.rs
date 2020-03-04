@@ -85,6 +85,7 @@ impl VM {
 
         // opcodeに対応するハンドラを呼び出す
         match opcode {
+            0x00 => self.op_stop(),
             0x01 => self.op_add(),
             0x03 => self.op_sub(),
             0x35 => self.op_calldataload(),
@@ -93,8 +94,10 @@ impl VM {
             0x56 => self.op_jump(),
             0x57 => self.op_jumpi(),
             0x5b => self.op_jumpdest(),
-            0x60 => self.op_push1(),
-            0x61 => self.op_push2(),
+            0x60 => self.op_push(1),
+            0x61 => self.op_push(2),
+            0x80 => self.op_dup(1),
+            0x90 => self.op_swap(1),
             0xf3 => self.op_return(),
             _ => panic!("exec: invalid opcode. PC: {} Opcode: {}", self.pc-1, opcode),
         }
@@ -123,6 +126,8 @@ impl VM {
 /// 具体的なOpcodeハンドラの実装
 #[allow(dead_code)]
 impl VM {
+    fn op_stop(&mut self) {}
+
     /// operand1(スタック1番目) + operand2(スタック2番目)
     fn op_add(&mut self) {
         self.consume_gas(3);
@@ -152,12 +157,23 @@ impl VM {
         self.push(operand.into());
     }
 
-    fn op_push1(&mut self) {
-        self.op_push(1);
+    fn op_dup(&mut self, index: usize) {
+        self.consume_gas(3);
+        println!("self.pc: {}", self.sp);
+        let operand = self.stack[self.sp-1];
+        if self.sp > 1 {
+            self.stack[self.sp-index-1] = operand;
+        } else {
+            self.push(operand);
+        }
     }
 
-    fn op_push2(&mut self) {
-        self.op_push(2);
+    fn op_swap(&mut self, index: usize) {
+        self.consume_gas(3);
+        let operand1 = self.stack[self.sp-1];
+        let operand2 = self.stack[self.sp-index-1];
+        self.stack[self.sp-1] = operand2;
+        self.stack[self.sp-index-1] = operand1;
     }
 
     /// スタックからstart, valueをpop
@@ -364,4 +380,48 @@ fn test_jumpi() {
     assert_eq!(vm.pc, 21); // jumpi
     vm.exec(); // ここでジャンプ
     assert_eq!(vm.pc, 7);
+}
+
+#[test]
+fn test_jumpi2() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6000355b6001900380600357"));
+    env.set_input(str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    let mut vm = VM::new(env);
+    for _ in 0..8 {
+        vm.exec();
+    }
+    assert_eq!(vm.pc, 11); // jumpi
+    vm.exec(); // ここでジャンプ
+    assert_eq!(vm.pc, 4);
+    for _ in 0..5 {
+        vm.exec();
+    }
+    assert_eq!(vm.pc, 11); // jumpi
+    vm.exec(); // ここでジャンプ
+    assert_eq!(vm.pc, 4);
+}
+
+#[test]
+fn test_dup1() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6005600480"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 5);
+    assert_eq!(vm.gas, 9999999991);
+    assert_eq!(vm.sp, 2);
+    assert_eq!(vm.stack, vec![0x04.into(), 0x04.into()]);
+}
+
+#[test]
+fn test_swap1() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6005600490"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 5);
+    assert_eq!(vm.gas, 9999999991);
+    assert_eq!(vm.sp, 2);
+    assert_eq!(vm.stack, vec![0x04.into(), 0x05.into()]);
 }
