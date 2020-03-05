@@ -187,6 +187,7 @@ impl VM {
         self.push(operand.into());
     }
 
+    /// スタックの先頭をスタックのindex+1番目にコピーする
     fn op_dup(&mut self, index: usize) {
         self.consume_gas(3);
         println!("self.pc: {}", self.sp);
@@ -198,6 +199,7 @@ impl VM {
         }
     }
 
+    /// スタックの先頭をスタックのindex+1番目と交換する
     fn op_swap(&mut self, index: usize) {
         self.consume_gas(3);
         let operand1 = self.stack[self.sp-1];
@@ -233,6 +235,8 @@ impl VM {
         self.push(bytes.into());
     }
 
+    /// スタックのoffsetからlength分のバイトデータを返り値として返す
+    /// この命令を実行するとトランザクションは終了する？
     fn op_return(&mut self) {
         let offset = self.pop().as_u32() as usize;
         let length = self.pop().as_u32() as usize;
