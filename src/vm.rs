@@ -55,14 +55,22 @@ pub struct VM {
 impl VM {
     /// コンストラクタ gasは10000000000とする
     pub fn new(env: Environment) -> Self {
-        Self {
+        let memory_size = 10000;
+
+        let mut instance = Self {
             env,
             pc: 0,
             gas: 10000000000,
             sp: 0,
             stack: Default::default(),
-            memory: Default::default(),
+            memory: Vec::with_capacity(memory_size),
+        };
+
+        for _ in 0..memory_size {
+            instance.memory.push(0);
         }
+
+        return instance;
     }
 
     /// スタックへのpush
@@ -79,8 +87,8 @@ impl VM {
     }
 
     /// EVMバイトコードを1命令実行する
-    fn exec(&mut self) {
-        let opcode = &self.env.code[self.pc];
+    fn exec(&mut self) -> bool {
+        let opcode = self.env.code[self.pc];
         self.pc += 1;
 
         // opcodeに対応するハンドラを呼び出す
@@ -92,6 +100,7 @@ impl VM {
             0x0a => self.op_exp(),
             0x35 => self.op_calldataload(),
             0x36 => self.op_calldatasize(),
+            0x39 => self.op_codecopy(),
             0x51 => self.op_mload(),
             0x52 => self.op_mstore(),
             0x56 => self.op_jump(),
@@ -104,6 +113,12 @@ impl VM {
             0xf3 => self.op_return(),
             _ => panic!("exec: invalid opcode. PC: {} Opcode: {}", self.pc-1, opcode),
         }
+
+        // トランザクションを終了させるかのフラグ returnのみtrue
+        return match opcode {
+            0xf3 => true,
+            _ => false,
+        };
     }
 
     fn consume_gas(&mut self, gas: usize) {
@@ -121,7 +136,9 @@ impl VM {
                 break;
             }
 
-            self.exec();
+            if self.exec() {
+                break;
+            }
         }
     }
 }
@@ -205,7 +222,7 @@ impl VM {
         let value = self.pop();
         let bytes: [u8; 32] = value.into();
         for (i, b) in bytes.iter().enumerate() {
-            self.memory.insert(address+i, *b);
+            self.memory[address+i] = *b;
         }
     }
 
@@ -225,7 +242,11 @@ impl VM {
     }
 
     fn op_return(&mut self) {
-        panic!("op_return: not implement error");
+        let offset = self.pop().as_u32() as usize;
+        let length = self.pop().as_u32() as usize;
+
+        let return_value = &self.memory[offset..offset+length];
+        println!("return: {:?}", return_value);
     }
 
     /// スタックからpopした値をstartとしてinputのstartの位置からstart+32の位置までの32byteのデータをstackにpush
@@ -279,6 +300,19 @@ impl VM {
             self.pc = destination + 1; // TODO: +1が必要か調査する
         }
     }
+
+    /// コントラクトにデプロイされたコードをコピーする
+    fn op_codecopy(&mut self) {
+        self.consume_gas(9); // ???
+        let dest_offset = self.pop().as_u32() as usize;
+        let offset = self.pop().as_u32() as usize;
+        let length = self.pop().as_u32() as usize;
+
+        for i in 0..length {
+            let b = self.env.code[offset+i];
+            self.memory[dest_offset+i] = b;
+        }
+    } 
 }
 
 fn str_to_bytes(src: &str) -> Vec<u8> {
@@ -502,4 +536,15 @@ fn test_loop2() {
     vm.exec_transaction();
     assert_eq!(vm.pc, 21);
     assert_eq!(vm.gas, 9999999949);
+}
+
+#[test]
+fn test_deploy() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("600580600b6000396000f36005600401"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 11);
+    assert_eq!(vm.gas, 9999999976);
+    assert_eq!(vm.sp, 0);
 }
