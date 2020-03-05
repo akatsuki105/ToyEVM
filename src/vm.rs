@@ -169,7 +169,7 @@ impl VM {
 
     /// operand1(スタック1番目) ** operand2(スタック2番目)
     fn op_exp(&mut self) {
-        self.consume_gas(3);
+        self.consume_gas(10);
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1.pow(operand2);
@@ -397,7 +397,7 @@ fn test_exp() {
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
-    assert_eq!(vm.gas, 9999999991);
+    assert_eq!(vm.gas, 9999999984);
     assert_eq!(vm.sp, 1);
     assert_eq!(vm.stack, vec![8.into()]);
 }
@@ -523,6 +523,25 @@ fn test_loop() {
     assert_eq!(vm.pc, 4);
 }
 
+/// 短いインプットに依存するループのテスト
+///
+/// ```
+/// CALLDATASIZE 10000000000 -> 9999999998  36
+/// PUSH1  => 20 9999999998 -> 9999999995   6020
+/// SUB          9999999995 -> 9999999992   03
+/// PUSH2  => 0100 9999999992 -> 9999999989 610100
+/// EXP             9999999989 -> 9999999979    0a
+/// PUSH1  => 00  9999999979 -> 9999999976  6000
+/// CALLDATALOAD 9999999976 -> 9999999973   35
+/// DIV         9999999973 -> 9999999968    04
+/// JUMPDEST    9999999968 -> 9999999967    5b
+/// PUSH1  => 01    9999999967 -> 9999999964    6001
+/// SWAP1           9999999964 -> 9999999961    90
+/// SUB             9999999961 -> 9999999958    03
+/// DUP1            9999999958 -> 9999999955    80
+/// PUSH1  => 0c       9999999955 -> 9999999952
+/// JUMPI           9999999952 -> 9999999942
+/// ```
 #[test]
 fn test_loop2() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
@@ -531,7 +550,7 @@ fn test_loop2() {
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 21);
-    assert_eq!(vm.gas, 9999999949);
+    assert_eq!(vm.gas, 9999999942);
 }
 
 #[test]
