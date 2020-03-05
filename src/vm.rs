@@ -55,22 +55,14 @@ pub struct VM {
 impl VM {
     /// コンストラクタ gasは10000000000とする
     pub fn new(env: Environment) -> Self {
-        let memory_size = 10000;
-
-        let mut instance = Self {
+        Self {
             env,
             pc: 0,
             gas: 10000000000,
             sp: 0,
             stack: Default::default(),
-            memory: Vec::with_capacity(memory_size),
-        };
-
-        for _ in 0..memory_size {
-            instance.memory.push(0);
+            memory: Default::default(),
         }
-
-        return instance;
     }
 
     /// スタックへのpush
@@ -222,7 +214,7 @@ impl VM {
         let value = self.pop();
         let bytes: [u8; 32] = value.into();
         for (i, b) in bytes.iter().enumerate() {
-            self.memory[address+i] = *b;
+            self.memory.insert(address+i, *b);
         }
     }
 
@@ -310,7 +302,7 @@ impl VM {
 
         for i in 0..length {
             let b = self.env.code[offset+i];
-            self.memory[dest_offset+i] = b;
+            self.memory.insert(dest_offset+i, b);
         }
     } 
 }
