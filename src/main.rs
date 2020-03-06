@@ -4,5 +4,5 @@ mod util;
 
 fn main() {
     let ws = state::WorldState::new("./config/config.json");
-    println!("{:?}", ws);
+    println!("world state: {}", ws.get_hash());
 }

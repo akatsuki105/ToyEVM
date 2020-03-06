@@ -3,6 +3,10 @@ pub fn str_to_bytes(src: &str) -> Vec<u8> {
     return bytes;
 }
 
+pub fn bytes_to_str(src: Vec<u8>) -> String {
+    hex::encode(src)
+}
+
 pub fn slice_to_array(s: &[u8]) -> [u8; 32] {
     let mut result = [0; 32];
     if s.len() < 32 {
