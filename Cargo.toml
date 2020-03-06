@@ -10,5 +10,4 @@ edition = "2018"
 ethereum-types = "0.8.0"
 hex = "0.4.2"
 serde = { version = "1.0", features = ["derive"] }
-
 serde_json = "1.0"

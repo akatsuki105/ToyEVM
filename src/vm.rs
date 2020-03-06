@@ -1,6 +1,7 @@
 extern crate ethereum_types;
 extern crate hex;
 
+use super::util;
 use ethereum_types::{H160, U256};
 
 /// トランザクションを実行するのに必要となる環境変数
@@ -259,7 +260,7 @@ impl VM {
     fn op_calldataload(&mut self) {
         self.consume_gas(3);
         let start = self.pop().as_u32() as usize;
-        let bytes: [u8; 32] = slice_to_array(&self.env.input[start..]);
+        let bytes: [u8; 32] = util::slice_to_array(&self.env.input[start..]);
         self.push(bytes.into());
     }
 
@@ -321,29 +322,10 @@ impl VM {
     } 
 }
 
-fn str_to_bytes(src: &str) -> Vec<u8> {
-    let bytes = hex::decode(src).expect("str_to_bytes: decoding failed");
-    return bytes;
-}
-
-fn slice_to_array(s: &[u8]) -> [u8; 32] {
-    let mut result = [0; 32];
-    if s.len() < 32 {
-        for (i, b) in s.iter().enumerate() {
-            result[i] = *b;
-        }
-    } else {
-        for i in 0..32 {
-            result[i] = s[i];
-        }
-    }
-    return result;
-}
-
 #[test]
 fn test_new() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6005600401"));
+    env.set_code(util::str_to_bytes("6005600401"));
     let vm = VM::new(env);
     assert_eq!(vm.env.code, vec![0x60, 0x05, 0x60, 0x04, 0x01]);
     assert_eq!(vm.pc, 0);
@@ -355,7 +337,7 @@ fn test_new() {
 #[test]
 fn test_push1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6005"));
+    env.set_code(util::str_to_bytes("6005"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 2);
@@ -367,7 +349,7 @@ fn test_push1() {
 #[test]
 fn test_add() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6005600401"));
+    env.set_code(util::str_to_bytes("6005600401"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
@@ -379,7 +361,7 @@ fn test_add() {
 #[test]
 fn test_sub() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6004600503"));
+    env.set_code(util::str_to_bytes("6004600503"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
@@ -391,7 +373,7 @@ fn test_sub() {
 #[test]
 fn test_mul() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6003600602"));
+    env.set_code(util::str_to_bytes("6003600602"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
@@ -403,7 +385,7 @@ fn test_mul() {
 #[test]
 fn test_div() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6003600604"));
+    env.set_code(util::str_to_bytes("6003600604"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
@@ -415,7 +397,7 @@ fn test_div() {
 #[test]
 fn test_exp() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("600360020a"));
+    env.set_code(util::str_to_bytes("600360020a"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
@@ -427,7 +409,7 @@ fn test_exp() {
 #[test]
 fn test_mstore() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6005600401600052"));
+    env.set_code(util::str_to_bytes("6005600401600052"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 8);
@@ -439,7 +421,7 @@ fn test_mstore() {
 #[test]
 fn test_mload() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6005600401600052600051"));
+    env.set_code(util::str_to_bytes("6005600401600052600051"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 11);
@@ -451,7 +433,7 @@ fn test_mload() {
 #[test]
 fn test_add2() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("61010161010201"));
+    env.set_code(util::str_to_bytes("61010161010201"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 7);
@@ -464,8 +446,8 @@ fn test_add2() {
 #[test]
 fn test_calldataload() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("60003560203501"));
-    env.set_input(str_to_bytes("00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000004"));
+    env.set_code(util::str_to_bytes("60003560203501"));
+    env.set_input(util::str_to_bytes("00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000004"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 7);
@@ -477,8 +459,8 @@ fn test_calldataload() {
 #[test]
 fn test_calldatasize() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("36"));
-    env.set_input(str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    env.set_code(util::str_to_bytes("36"));
+    env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 1);
@@ -490,8 +472,8 @@ fn test_calldatasize() {
 #[test]
 fn test_jumpi() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6000356000525b600160005103600052600051600657"));
-    env.set_input(str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    env.set_code(util::str_to_bytes("6000356000525b600160005103600052600051600657"));
+    env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
     for _ in 0..14 {
         vm.exec();
@@ -504,7 +486,7 @@ fn test_jumpi() {
 #[test]
 fn test_dup1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6005600480"));
+    env.set_code(util::str_to_bytes("6005600480"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
@@ -516,7 +498,7 @@ fn test_dup1() {
 #[test]
 fn test_swap1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6005600490"));
+    env.set_code(util::str_to_bytes("6005600490"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 5);
@@ -528,8 +510,8 @@ fn test_swap1() {
 #[test]
 fn test_loop() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("6000355b6001900380600357"));
-    env.set_input(str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    env.set_code(util::str_to_bytes("6000355b6001900380600357"));
+    env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
     for _ in 0..8 {
         vm.exec();
@@ -567,8 +549,8 @@ fn test_loop() {
 #[test]
 fn test_loop2() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("366020036101000a600035045b6001900380600c57"));
-    env.set_input(str_to_bytes("01"));
+    env.set_code(util::str_to_bytes("366020036101000a600035045b6001900380600c57"));
+    env.set_input(util::str_to_bytes("01"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 21);
@@ -578,7 +560,7 @@ fn test_loop2() {
 #[test]
 fn test_deploy() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(str_to_bytes("600580600b6000396000f36005600401"));
+    env.set_code(util::str_to_bytes("600580600b6000396000f36005600401"));
     let mut vm = VM::new(env);
     vm.exec_transaction();
     assert_eq!(vm.pc, 11);

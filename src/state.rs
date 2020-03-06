@@ -4,8 +4,9 @@ extern crate serde_json;
 use std::fs::File;
 use std::io::prelude::*;
 use std::collections::HashMap;
+use super::util;
 
-use ethereum_types::{H160, U256};
+use ethereum_types::{H160, H256, U256};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -28,14 +29,16 @@ impl WorldState {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccountState {
+    nonce: usize,
     balance: U256,
     storage: HashMap<U256, U256>,
-    code: Vec<u8>,
+    code: String,
 }
 
 impl AccountState {
-    pub fn new(code: Vec<u8>) -> Self {
+    pub fn new(code: String) -> Self {
         Self {
+            nonce: 0,
             balance: Default::default(),
             storage: Default::default(),
             code,
@@ -64,7 +67,12 @@ impl AccountState {
     }
 
     /// getter for code
-    pub fn get_code(&self) -> &Vec<u8> {
-        &self.code
+    pub fn get_code(&self) -> String {
+        self.code.clone()
+    }
+
+    fn calc_hash(&self) -> H256 {
+        let hash = H256::from_slice(&util::str_to_bytes(&self.code)[..]);
+        return hash;
     }
 }

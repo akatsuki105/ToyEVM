@@ -1,6 +1,8 @@
 mod vm;
 mod state;
+mod util;
 
 fn main() {
-    println!("Hello, world!");
+    let ws = state::WorldState::new("./config/config.json");
+    println!("{:?}", ws);
 }
