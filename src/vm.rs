@@ -87,6 +87,7 @@ impl VM {
         match opcode {
             0x00 => self.op_stop(),
             0x01 => self.op_add(),
+            0x02 => self.op_mul(),
             0x03 => self.op_sub(),
             0x04 => self.op_div(),
             0x0a => self.op_exp(),
@@ -155,6 +156,15 @@ impl VM {
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 - operand2;
+        self.push(result);
+    }
+
+    /// operand1(スタック1番目) * operand2(スタック2番目)
+    fn op_mul(&mut self) {
+        self.consume_gas(5);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1 * operand2;
         self.push(result);
     }
 
@@ -376,6 +386,18 @@ fn test_sub() {
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
     assert_eq!(vm.stack, vec![1.into()]);
+}
+
+#[test]
+fn test_mul() {
+    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    env.set_code(str_to_bytes("6003600602"));
+    let mut vm = VM::new(env);
+    vm.exec_transaction();
+    assert_eq!(vm.pc, 5);
+    assert_eq!(vm.gas, 9999999989);
+    assert_eq!(vm.sp, 1);
+    assert_eq!(vm.stack, vec![18.into()]);
 }
 
 #[test]
