@@ -68,8 +68,20 @@ EVMは1層1層が256bitのスタックを実装しており、一般的なスタ
 
 ## Opcodes
 
-WIP
-
+|   opcode    |  Mnemonic   |     Gas     |  Stack Input  |  Stack Output  |  Expression  |   Notes   |
+| ----------- | ----------- | ----------- |  -----------  |  -----------   | -----------  | --------- |
+|  00         |  STOP       |  0          |               |                |  STOP()      |  halts execution of the contract      |
+|  01         |  ADD        |  3          |  a\|b\|         |  a+b\|          |  a+b         |  (u)int256 addition modulo 2**256  |
+|  02         |  MUL        |  5          |  a\|b\|         |  a\*b\|          |  a\*b         |  (u)int256 multiplication modulo 2**256  |
+|  03         |  SUB        |  3          |  a\|b\|         |  a-b\|          |  a-b         |  (u)int256 subtraction modulo 2**256  |
+|  04         |  DIV        |  5          |  a\|b\|         |  a//b\|          |  a//b         |  uint256 division  |
+|  05         |  SDIV       |  5          |  a\|b\|         |  a//b\|          |  a//b         |  int256 division   |
+|  06         |  MOD        |  5          |  a\|b\|         |  a%b\|          |  a%b         |  uint256 modulus   |
+|  07         |  SMOD        |  5          |  a\|b\|         |  a%b\|          |  a%b         |  int256 modulus   |
+|  08         |  ADDMOD        |  8          |  a\|b\|N\|         |  (a + b) % N\|          |  (a + b) % N         |  (u)int256 addition modulo N   |
+|  09         |  MULMOD        |  8          |  a\|b\|N\|         |  (a * b) % N\|          |  (a * b) % N         |  (u)int256 multiplication modulo N   |
+|  0a         |  EXP        |  10          |  a\|b\|        |  a\*\*b\|          |  a\*\*b         |  uint256 exponentiation modulo 2**256  |
+|  0b         |  SIGNEXTEND        |  5          |  b\|x\|        |  y\|          |  y = SIGNEXTEND(x, b)         |  sign extends x from (b + 1) * 8 bits to 256 bits.  |
 ## 参考
 
 - https://ethervm.io/
