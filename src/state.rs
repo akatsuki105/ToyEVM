@@ -11,7 +11,7 @@ use sha3::{Digest, Sha3_256};
 use ethereum_types::{H160, U256};
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct WorldState {
     addresses: HashMap<H160, AccountState>,
     hash: String,
@@ -66,6 +66,10 @@ impl AccountState {
         }
     }
 
+    pub fn increment_nonce(&mut self) {
+        self.nonce += 1;
+    }
+
     /// getter for balance
     pub fn get_balance(&self) -> U256 {
         self.balance
@@ -93,7 +97,15 @@ impl AccountState {
     }
 
     fn calc_hash(&self) -> String {
-        return calc_hash(&util::str_to_bytes(&self.code));
+        let nonce = self.nonce.to_string();
+        let balance = self.balance.to_string();
+        let mut storage = "".to_string();
+        for (key, val) in &self.storage {
+            storage += &(key.to_string() + &val.to_string());
+        }
+        let code = self.code.clone();
+        let hash = nonce + &balance + &storage + &code;
+        return calc_hash(&util::str_to_bytes(&hash));
     }
 }
 

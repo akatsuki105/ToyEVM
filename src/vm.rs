@@ -2,6 +2,7 @@ extern crate ethereum_types;
 extern crate hex;
 
 use super::util;
+use super::state;
 use ethereum_types::{H160, U256};
 
 /// トランザクションを実行するのに必要となる環境変数
@@ -80,7 +81,7 @@ impl VM {
     }
 
     /// EVMバイトコードを1命令実行する
-    fn exec(&mut self) -> bool {
+    fn exec(&mut self, ws: &mut state::WorldState) -> bool {
         let opcode = self.env.code[self.pc];
         self.pc += 1;
 
@@ -92,6 +93,10 @@ impl VM {
             0x03 => self.op_sub(),
             0x04 => self.op_div(),
             0x0a => self.op_exp(),
+            0x16 => self.op_and(),
+            0x17 => self.op_or(),
+            0x18 => self.op_xor(),
+            0x19 => self.op_not(),
             0x35 => self.op_calldataload(),
             0x36 => self.op_calldatasize(),
             0x39 => self.op_codecopy(),
@@ -124,13 +129,13 @@ impl VM {
     }
 
     /// トランザクションが終了するまでexecを繰り返す
-    pub fn exec_transaction(&mut self) {
+    pub fn exec_transaction(&mut self, ws: &mut state::WorldState) {
         loop {
             if self.pc >= self.env.code.len() {
                 break;
             }
 
-            if self.exec() {
+            if self.exec(ws) {
                 break;
             }
         }
@@ -184,6 +189,41 @@ impl VM {
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1.pow(operand2);
+        self.push(result);
+    }
+
+    /// operand1(スタック1番目) & operand2(スタック2番目)
+    fn op_and(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1 & operand2;
+        self.push(result);
+    }
+
+    /// operand1(スタック1番目) | operand2(スタック2番目)
+    fn op_or(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1 | operand2;
+        self.push(result);
+    }
+
+    /// operand1(スタック1番目) ^ operand2(スタック2番目)
+    fn op_xor(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1 ^ operand2;
+        self.push(result);
+    }
+
+    /// not operand1(スタック1番目)
+    fn op_not(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let result = !operand1;
         self.push(result);
     }
 
@@ -339,7 +379,8 @@ fn test_push1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 2);
     assert_eq!(vm.gas, 9999999997);
     assert_eq!(vm.sp, 1);
@@ -351,7 +392,8 @@ fn test_add() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600401"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
@@ -363,7 +405,8 @@ fn test_sub() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6004600503"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
@@ -375,7 +418,8 @@ fn test_mul() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6003600602"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999989);
     assert_eq!(vm.sp, 1);
@@ -387,7 +431,8 @@ fn test_div() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6003600604"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999989);
     assert_eq!(vm.sp, 1);
@@ -399,7 +444,8 @@ fn test_exp() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("600360020a"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999984);
     assert_eq!(vm.sp, 1);
@@ -411,7 +457,8 @@ fn test_mstore() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600401600052"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 8);
     assert_eq!(vm.gas, 9999999982);
     assert_eq!(vm.sp, 0);
@@ -423,7 +470,8 @@ fn test_mload() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600401600052600051"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 11);
     assert_eq!(vm.gas, 9999999976);
     assert_eq!(vm.sp, 1);
@@ -435,7 +483,8 @@ fn test_add2() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("61010161010201"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 7);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
@@ -449,7 +498,8 @@ fn test_calldataload() {
     env.set_code(util::str_to_bytes("60003560203501"));
     env.set_input(util::str_to_bytes("00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000004"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 7);
     assert_eq!(vm.gas, 9999999985);
     assert_eq!(vm.sp, 1);
@@ -462,7 +512,8 @@ fn test_calldatasize() {
     env.set_code(util::str_to_bytes("36"));
     env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 1);
     assert_eq!(vm.gas, 9999999998);
     assert_eq!(vm.sp, 1);
@@ -475,11 +526,12 @@ fn test_jumpi() {
     env.set_code(util::str_to_bytes("6000356000525b600160005103600052600051600657"));
     env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
+    let mut ws = state::WorldState::new("./config/config.json");
     for _ in 0..14 {
-        vm.exec();
+        vm.exec(&mut ws);
     }
     assert_eq!(vm.pc, 21); // jumpi
-    vm.exec(); // ここでジャンプ
+    vm.exec(&mut ws); // ここでジャンプ
     assert_eq!(vm.pc, 7);
 }
 
@@ -488,7 +540,8 @@ fn test_dup1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600480"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 2);
@@ -500,7 +553,8 @@ fn test_swap1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600490"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 2);
@@ -513,17 +567,18 @@ fn test_loop() {
     env.set_code(util::str_to_bytes("6000355b6001900380600357"));
     env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
+    let mut ws = state::WorldState::new("./config/config.json");
     for _ in 0..8 {
-        vm.exec();
+        vm.exec(&mut ws);
     }
     assert_eq!(vm.pc, 11); // jumpi
-    vm.exec(); // ここでジャンプ
+    vm.exec(&mut ws); // ここでジャンプ
     assert_eq!(vm.pc, 4);
     for _ in 0..5 {
-        vm.exec();
+        vm.exec(&mut ws);
     }
     assert_eq!(vm.pc, 11); // jumpi
-    vm.exec(); // ここでジャンプ
+    vm.exec(&mut ws); // ここでジャンプ
     assert_eq!(vm.pc, 4);
 }
 
@@ -552,7 +607,8 @@ fn test_loop2() {
     env.set_code(util::str_to_bytes("366020036101000a600035045b6001900380600c57"));
     env.set_input(util::str_to_bytes("01"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 21);
     assert_eq!(vm.gas, 9999999942);
 }
@@ -562,7 +618,8 @@ fn test_deploy() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("600580600b6000396000f36005600401"));
     let mut vm = VM::new(env);
-    vm.exec_transaction();
+    let mut ws = state::WorldState::new("./config/config.json");
+    vm.exec_transaction(&mut ws);
     assert_eq!(vm.pc, 11);
     assert_eq!(vm.gas, 9999999976);
     assert_eq!(vm.sp, 0);
