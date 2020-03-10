@@ -20,3 +20,7 @@ pub fn slice_to_array(s: &[u8]) -> [u8; 32] {
     }
     return result;
 }
+
+pub fn not_implement_panic() {
+    panic!("not implement");
+}

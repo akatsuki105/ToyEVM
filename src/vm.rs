@@ -2,6 +2,7 @@ extern crate ethereum_types;
 extern crate hex;
 
 use super::util;
+use util::not_implement_panic;
 use super::state;
 use ethereum_types::{H160, U256};
 
@@ -53,7 +54,6 @@ pub struct VM {
 }
 
 /// Opcodeの実行で使われる汎用的な関数を実装している
-#[allow(dead_code)]
 impl VM {
     /// コンストラクタ gasは10000000000とする
     pub fn new(env: Environment) -> Self {
@@ -81,7 +81,7 @@ impl VM {
     }
 
     /// EVMバイトコードを1命令実行する
-    fn exec(&mut self, ws: &mut state::WorldState) -> bool {
+    fn exec(&mut self, contract: &mut state::AccountState) -> bool {
         let opcode = self.env.code[self.pc];
         self.pc += 1;
 
@@ -92,7 +92,19 @@ impl VM {
             0x02 => self.op_mul(),
             0x03 => self.op_sub(),
             0x04 => self.op_div(),
+            0x05 => self.op_sdiv(),
+            0x06 => self.op_mod(),
+            0x07 => self.op_smod(),
+            0x08 => self.op_addmod(),
+            0x09 => self.op_mulmod(),
             0x0a => self.op_exp(),
+            0x0b => self.op_sig_next_end(),
+            0x10 => self.op_lt(),
+            0x11 => self.op_gt(),
+            0x12 => self.op_slt(),
+            0x13 => self.op_sgt(),
+            0x14 => self.op_eq(),
+            0x15 => self.op_is_zero(),
             0x16 => self.op_and(),
             0x17 => self.op_or(),
             0x18 => self.op_xor(),
@@ -102,6 +114,8 @@ impl VM {
             0x39 => self.op_codecopy(),
             0x51 => self.op_mload(),
             0x52 => self.op_mstore(),
+            0x54 => self.op_sload(contract),
+            0x55 => self.op_sstore(contract),
             0x56 => self.op_jump(),
             0x57 => self.op_jumpi(),
             0x5b => self.op_jumpdest(),
@@ -129,39 +143,27 @@ impl VM {
     }
 
     /// トランザクションが終了するまでexecを繰り返す
-    pub fn exec_transaction(&mut self, ws: &mut state::WorldState) {
+    pub fn exec_transaction(&mut self, contract: &mut state::AccountState) {
         loop {
             if self.pc >= self.env.code.len() {
                 break;
             }
 
-            if self.exec(ws) {
+            if self.exec(contract) {
                 break;
             }
         }
     }
 }
 
-/// 具体的なOpcodeハンドラの実装
-#[allow(dead_code)]
+/// 算術
 impl VM {
-    fn op_stop(&mut self) {}
-
     /// operand1(スタック1番目) + operand2(スタック2番目)
     fn op_add(&mut self) {
         self.consume_gas(3);
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 + operand2;
-        self.push(result);
-    }
-
-    /// operand1(スタック1番目) - operand2(スタック2番目)
-    fn op_sub(&mut self) {
-        self.consume_gas(3);
-        let operand1 = self.pop();
-        let operand2 = self.pop();
-        let result = operand1 - operand2;
         self.push(result);
     }
 
@@ -174,6 +176,15 @@ impl VM {
         self.push(result);
     }
 
+    /// operand1(スタック1番目) - operand2(スタック2番目)
+    fn op_sub(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let result = operand1 - operand2;
+        self.push(result);
+    }
+
     /// operand1(スタック1番目) // operand2(スタック2番目)
     fn op_div(&mut self) {
         self.consume_gas(5);
@@ -181,6 +192,26 @@ impl VM {
         let operand2 = self.pop();
         let result = operand1 / operand2;
         self.push(result);
+    }
+
+    fn op_sdiv(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_mod(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_smod(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_addmod(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_mulmod(&mut self) {
+        not_implement_panic();
     }
 
     /// operand1(スタック1番目) ** operand2(スタック2番目)
@@ -192,6 +223,67 @@ impl VM {
         self.push(result);
     }
 
+    fn op_sig_next_end(&mut self) {
+        not_implement_panic();
+    }
+}
+
+/// 条件
+impl VM {
+    fn op_lt(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        if operand1 < operand2 {
+            self.push(U256::from(1));
+        } else {
+            self.push(U256::from(0));
+        }
+    }
+
+    fn op_gt(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        if operand1 > operand2 {
+            self.push(U256::from(1));
+        } else {
+            self.push(U256::from(0));
+        }
+    }
+
+    fn op_slt(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_sgt(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_eq(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        if operand1 == operand2 {
+            self.push(U256::from(1));
+        } else {
+            self.push(U256::from(0));
+        }
+    }
+
+    fn op_is_zero(&mut self) {
+        self.consume_gas(3);
+        let operand1 = self.pop();
+        if operand1 == U256::from(0) {
+            self.push(U256::from(1));
+        } else {
+            self.push(U256::from(0));
+        }
+    }
+}
+
+/// ビット
+impl VM {
     /// operand1(スタック1番目) & operand2(スタック2番目)
     fn op_and(&mut self) {
         self.consume_gas(3);
@@ -226,6 +318,27 @@ impl VM {
         let result = !operand1;
         self.push(result);
     }
+
+    fn op_byte(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_shl(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_shr(&mut self) {
+        not_implement_panic();
+    }
+
+    fn op_sar(&mut self) {
+        not_implement_panic();
+    }
+}
+
+/// その他
+impl VM {
+    fn op_stop(&mut self) {}
 
     /// lengthバイトpushする
     fn op_push(&mut self, length: usize) {
@@ -282,8 +395,28 @@ impl VM {
             bytes[i] = b;
         }
         
-        // stackにpush
         self.push(bytes.into());
+    }
+
+    fn op_sload(&mut self, contract: &mut state::AccountState) {
+        self.consume_gas(200);
+        let key = self.pop();
+        let value = contract.get_storage(&key);
+        self.push(*value);
+    }
+
+    fn op_sstore(&mut self, contract: &mut state::AccountState) {
+        let key = self.pop();
+        let value = self.pop();
+
+        // ストレージへの書き込みは書き込み先と書き込むデータによってgasが変動する
+        if (key == U256::from(0)) && (value != U256::from(0)) {
+            self.consume_gas(20000);
+        } else {
+            self.consume_gas(5000);
+        }
+
+        contract.set_storage(key, value);
     }
 
     /// スタックのoffsetからlength分のバイトデータを返り値として返す
@@ -379,8 +512,8 @@ fn test_push1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 2);
     assert_eq!(vm.gas, 9999999997);
     assert_eq!(vm.sp, 1);
@@ -392,8 +525,8 @@ fn test_add() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600401"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
@@ -405,8 +538,8 @@ fn test_sub() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6004600503"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
@@ -418,8 +551,8 @@ fn test_mul() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6003600602"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999989);
     assert_eq!(vm.sp, 1);
@@ -431,8 +564,8 @@ fn test_div() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6003600604"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999989);
     assert_eq!(vm.sp, 1);
@@ -444,8 +577,8 @@ fn test_exp() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("600360020a"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999984);
     assert_eq!(vm.sp, 1);
@@ -457,8 +590,8 @@ fn test_mstore() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600401600052"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 8);
     assert_eq!(vm.gas, 9999999982);
     assert_eq!(vm.sp, 0);
@@ -470,8 +603,8 @@ fn test_mload() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600401600052600051"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 11);
     assert_eq!(vm.gas, 9999999976);
     assert_eq!(vm.sp, 1);
@@ -483,8 +616,8 @@ fn test_add2() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("61010161010201"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 7);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 1);
@@ -498,8 +631,8 @@ fn test_calldataload() {
     env.set_code(util::str_to_bytes("60003560203501"));
     env.set_input(util::str_to_bytes("00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000004"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 7);
     assert_eq!(vm.gas, 9999999985);
     assert_eq!(vm.sp, 1);
@@ -512,8 +645,8 @@ fn test_calldatasize() {
     env.set_code(util::str_to_bytes("36"));
     env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 1);
     assert_eq!(vm.gas, 9999999998);
     assert_eq!(vm.sp, 1);
@@ -526,12 +659,12 @@ fn test_jumpi() {
     env.set_code(util::str_to_bytes("6000356000525b600160005103600052600051600657"));
     env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
+    let mut contract = state::AccountState::new("".to_string());
     for _ in 0..14 {
-        vm.exec(&mut ws);
+        vm.exec(&mut contract);
     }
     assert_eq!(vm.pc, 21); // jumpi
-    vm.exec(&mut ws); // ここでジャンプ
+    vm.exec(&mut contract); // ここでジャンプ
     assert_eq!(vm.pc, 7);
 }
 
@@ -540,8 +673,8 @@ fn test_dup1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600480"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 2);
@@ -553,8 +686,8 @@ fn test_swap1() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6005600490"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 5);
     assert_eq!(vm.gas, 9999999991);
     assert_eq!(vm.sp, 2);
@@ -567,18 +700,18 @@ fn test_loop() {
     env.set_code(util::str_to_bytes("6000355b6001900380600357"));
     env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
+    let mut contract = state::AccountState::new("".to_string());
     for _ in 0..8 {
-        vm.exec(&mut ws);
+        vm.exec(&mut contract);
     }
     assert_eq!(vm.pc, 11); // jumpi
-    vm.exec(&mut ws); // ここでジャンプ
+    vm.exec(&mut contract); // ここでジャンプ
     assert_eq!(vm.pc, 4);
     for _ in 0..5 {
-        vm.exec(&mut ws);
+        vm.exec(&mut contract);
     }
     assert_eq!(vm.pc, 11); // jumpi
-    vm.exec(&mut ws); // ここでジャンプ
+    vm.exec(&mut contract); // ここでジャンプ
     assert_eq!(vm.pc, 4);
 }
 
@@ -607,8 +740,8 @@ fn test_loop2() {
     env.set_code(util::str_to_bytes("366020036101000a600035045b6001900380600c57"));
     env.set_input(util::str_to_bytes("01"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 21);
     assert_eq!(vm.gas, 9999999942);
 }
@@ -618,8 +751,8 @@ fn test_deploy() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("600580600b6000396000f36005600401"));
     let mut vm = VM::new(env);
-    let mut ws = state::WorldState::new("./config/config.json");
-    vm.exec_transaction(&mut ws);
+    let mut contract = state::AccountState::new("".to_string());
+    vm.exec_transaction(&mut contract);
     assert_eq!(vm.pc, 11);
     assert_eq!(vm.gas, 9999999976);
     assert_eq!(vm.sp, 0);

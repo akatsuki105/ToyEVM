@@ -46,6 +46,11 @@ impl WorldState {
     pub fn get_hash(&self) -> String {
         return self.hash.clone();
     }
+
+    pub fn get_account_state(&mut self, address: &H160) -> &mut AccountState {
+        let account_state = self.addresses.get_mut(address).expect("key is not found in storage.");
+        return account_state;
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -81,8 +86,8 @@ impl AccountState {
     }
 
     /// getter for storage
-    pub fn get_storage(&self, key: &U256) -> Option<&U256> {
-        let value = self.storage.get(key);
+    pub fn get_storage(&self, key: &U256) -> &U256 {
+        let value = self.storage.get(key).expect("key is not found in storage");
         return value;
     }
 
