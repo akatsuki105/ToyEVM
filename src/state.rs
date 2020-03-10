@@ -27,13 +27,17 @@ impl WorldState {
         // 構造体にパース
         let mut ws: WorldState = serde_json::from_str(&config_json).unwrap();
 
+        ws.update_state();
+        return ws;
+    }
+
+    pub fn update_state(&mut self) {
         // worldstateをアカウントから計算する
-        let mut account_hashs = Vec::with_capacity(ws.addresses.len());
-        for (_, val) in &ws.addresses {
+        let mut account_hashs = Vec::with_capacity(self.addresses.len());
+        for (_, val) in &self.addresses {
             account_hashs.push(val.calc_hash());
         }
-        ws.hash = ws.calc_hash(account_hashs);
-        return ws;
+        self.hash = self.calc_hash(account_hashs);
     }
 
     /// 計算方法がよくわからない とりあえず連結してhashとる
