@@ -1,4 +1,4 @@
-# Ethereum Virtual Machine について
+# ⛓ Ethereum Virtual Machine について
 
 EVMはスタックベース、ビッグエンディアン形式の1ワード256bitとするバーチャルマシンであり、Ethereumブロックチェーン上でスマートコントラクトを実行されるために作られたものです。
 
@@ -15,7 +15,7 @@ EVMはスタックベース、ビッグエンディアン形式の1ワード256b
 
 ほかのスタックベースのVMと同様に、オペコードはスタックの先頭からオペランドをPOPして実行結果をスタックにPUSHします。
 
-## Index
+## 🔍 Index
 
 - [EthereumのステートとEVM](#EthereumのステートとEVM)
 - [コントラクトのデプロイ](#コントラクトのデプロイ)
@@ -23,7 +23,7 @@ EVMはスタックベース、ビッグエンディアン形式の1ワード256b
 - [Gas](#Gas)
 - [Opcode一覧](#Opcode一覧)
 
-## EthereumのステートとEVM
+## ⛓ EthereumのステートとEVM
 
 EthereumのステートはWorld stateとAccount Stateのおおまかに2つに分けられます。
 
@@ -49,7 +49,7 @@ DBのトランザクションと同様に、Ethereumへのステートの反映�
 
 途中でgas不足などによりトランザクションが中断した場合はEthereumへのステート反映は行われることはありません。
 
-## コントラクトのデプロイ
+## 📦 コントラクトのデプロイ
 
 新しいコントラクトをEthereum上にデプロイするには、デプロイのための特別なトランザクションが必要になってきます。
 
@@ -91,7 +91,7 @@ ADD         // 01
 
 この返り値がコントラクトのコードとしてEthereum上に登録されます。
 
-## コントラクトの実行
+## 🎮 コントラクトの実行
 
 コントラクトはユーザーのためにインターフェースとなるABIを公開しています。
 
@@ -142,11 +142,11 @@ CALL, CREATE命令はコントラクトにほかのコントラクトのアク�
 
 RETURN命令は、メモリからデータのまとまりを返り値として返す命令であり、SUICIDEはコントラクトを消去して、たまっていた資産を特定のアドレスに返す役割を持った命令です。
 
-## Gas
+## ☁️ Gas
 
 [Gas](./gas.md)を参照
 
-## Opcode一覧
+## 📑 Opcode一覧
 
 |Value|Mnemonic|Gas Used|Subset|Removed from stack|Added to stack|Notes|Formula Notes|
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -223,7 +223,7 @@ RETURN命令は、メモリからデータのまとまりを返り値として�
 
 ※ [opcode-gas-costs_EIP-150_revision-1e18248_2017-04-12.csv](https://github.com/djrtwo/evm-opcode-gas-costs/blob/master/opcode-gas-costs_EIP-150_revision-1e18248_2017-04-12.csv)から移植したものです
 
-## 参考
+## 📚 参考
 
 - [Mastering Ethereum](https://www.oreilly.co.jp/books/9784873118963/)
 - [Ethereum Virtual Machine Opcodes](https://ethervm.io/)

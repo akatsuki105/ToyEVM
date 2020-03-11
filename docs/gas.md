@@ -1,4 +1,4 @@
-# Gas
+# ☁️ Gas
 
 GasはWeiと同様にEthereumにおける基本単位です。
 

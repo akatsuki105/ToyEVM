@@ -1,14 +1,14 @@
-# ToyEVM
+# 🚗 ToyEVM
 
 簡易的なEVM(Ethereum Virtual Machine)を実装することを目標としたRust製のレポジトリです。
 
-## Ethereum Virtual Machine
+## ⛓ Ethereum Virtual Machine
 
 EVMについての説明は[こちら](./guide.md)にまとめてあります。
 
-## Usage
+## 🎮 Usage
 
-### 起動
+### 💡 起動
 
 ```sh
 make build   # require make
@@ -19,7 +19,7 @@ make build   # require make
 
 #### コントラクトのデプロイ
 
-### その他
+### 📚 その他
 
 #### 初期ステートの変更
 
