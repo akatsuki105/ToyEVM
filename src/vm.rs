@@ -51,6 +51,7 @@ pub struct VM {
     sp: usize, // スタックポインタ
     stack: Vec<U256>, // トランザクションのライフサイクルの間保持される一時的なスタック領域
     memory: Vec<u8>, // トランザクションのライフサイクルの間保持される一時的なメモリ領域
+    asm: Vec<String>, // 実行した命令を入れておく 逆アセンブルに利用
 }
 
 /// Opcodeの実行で使われる汎用的な関数を実装している
@@ -64,6 +65,7 @@ impl VM {
             sp: 0,
             stack: Default::default(),
             memory: Default::default(),
+            asm: Default::default(),
         }
     }
 
@@ -154,6 +156,22 @@ impl VM {
             }
         }
     }
+
+    pub fn disassemble(code: &str) {
+        let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+        env.set_code(util::str_to_bytes(code));
+        let mut vm = VM::new(env);
+        let mut contract = state::AccountState::new(code.to_string());
+        vm.exec_transaction(&mut contract);
+
+        for mnemonic in vm.asm {
+            println!("{}", mnemonic);
+        }
+    }
+
+    fn push_asm(&mut self, mnemonic: &str) {
+        self.asm.push(mnemonic.to_string());
+    }
 }
 
 /// 算術
@@ -161,6 +179,7 @@ impl VM {
     /// operand1(スタック1番目) + operand2(スタック2番目)
     fn op_add(&mut self) {
         self.consume_gas(3);
+        self.push_asm("ADD");
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 + operand2;
@@ -170,6 +189,7 @@ impl VM {
     /// operand1(スタック1番目) * operand2(スタック2番目)
     fn op_mul(&mut self) {
         self.consume_gas(5);
+        self.push_asm("MUL");
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 * operand2;
@@ -179,6 +199,7 @@ impl VM {
     /// operand1(スタック1番目) - operand2(スタック2番目)
     fn op_sub(&mut self) {
         self.consume_gas(3);
+        self.push_asm("SUB");
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 - operand2;
@@ -188,6 +209,7 @@ impl VM {
     /// operand1(スタック1番目) // operand2(スタック2番目)
     fn op_div(&mut self) {
         self.consume_gas(5);
+        self.push_asm("DIV");
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 / operand2;
@@ -195,28 +217,34 @@ impl VM {
     }
 
     fn op_sdiv(&mut self) {
+        self.push_asm("SDIV");
         not_implement_panic();
     }
 
     fn op_mod(&mut self) {
+        self.push_asm("MOD");
         not_implement_panic();
     }
 
     fn op_smod(&mut self) {
+        self.push_asm("SMOD");
         not_implement_panic();
     }
 
     fn op_addmod(&mut self) {
+        self.push_asm("ADDMOD");
         not_implement_panic();
     }
 
     fn op_mulmod(&mut self) {
+        self.push_asm("MULMOD");
         not_implement_panic();
     }
 
     /// operand1(スタック1番目) ** operand2(スタック2番目)
     fn op_exp(&mut self) {
         self.consume_gas(10);
+        self.push_asm("EXP");
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1.pow(operand2);
@@ -224,6 +252,7 @@ impl VM {
     }
 
     fn op_sig_next_end(&mut self) {
+        self.push_asm("SIGNEXTEND");
         not_implement_panic();
     }
 }
@@ -232,6 +261,7 @@ impl VM {
 impl VM {
     fn op_lt(&mut self) {
         self.consume_gas(3);
+        self.push_asm("LT");
         let operand1 = self.pop();
         let operand2 = self.pop();
         if operand1 < operand2 {
@@ -243,6 +273,7 @@ impl VM {
 
     fn op_gt(&mut self) {
         self.consume_gas(3);
+        self.push_asm("GT");
         let operand1 = self.pop();
         let operand2 = self.pop();
         if operand1 > operand2 {
@@ -253,15 +284,18 @@ impl VM {
     }
 
     fn op_slt(&mut self) {
+        self.push_asm("SLT");
         not_implement_panic();
     }
 
     fn op_sgt(&mut self) {
+        self.push_asm("SGT");
         not_implement_panic();
     }
 
     fn op_eq(&mut self) {
         self.consume_gas(3);
+        self.push_asm("EQ");
         let operand1 = self.pop();
         let operand2 = self.pop();
         if operand1 == operand2 {
@@ -273,6 +307,7 @@ impl VM {
 
     fn op_is_zero(&mut self) {
         self.consume_gas(3);
+        self.push_asm("ISZERO");
         let operand1 = self.pop();
         if operand1 == U256::from(0) {
             self.push(U256::from(1));
@@ -287,6 +322,7 @@ impl VM {
     /// operand1(スタック1番目) & operand2(スタック2番目)
     fn op_and(&mut self) {
         self.consume_gas(3);
+        self.push_asm("AND");
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 & operand2;
@@ -296,6 +332,7 @@ impl VM {
     /// operand1(スタック1番目) | operand2(スタック2番目)
     fn op_or(&mut self) {
         self.consume_gas(3);
+        self.push_asm("OR");
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 | operand2;
@@ -305,6 +342,7 @@ impl VM {
     /// operand1(スタック1番目) ^ operand2(スタック2番目)
     fn op_xor(&mut self) {
         self.consume_gas(3);
+        self.push_asm("XOR");
         let operand1 = self.pop();
         let operand2 = self.pop();
         let result = operand1 ^ operand2;
@@ -314,31 +352,38 @@ impl VM {
     /// not operand1(スタック1番目)
     fn op_not(&mut self) {
         self.consume_gas(3);
+        self.push_asm("NOT");
         let operand1 = self.pop();
         let result = !operand1;
         self.push(result);
     }
 
     fn op_byte(&mut self) {
+        self.push_asm("BYTE");
         not_implement_panic();
     }
 
     fn op_shl(&mut self) {
+        self.push_asm("SHL");
         not_implement_panic();
     }
 
     fn op_shr(&mut self) {
+        self.push_asm("SHR");
         not_implement_panic();
     }
 
     fn op_sar(&mut self) {
+        self.push_asm("SAR");
         not_implement_panic();
     }
 }
 
 /// その他
 impl VM {
-    fn op_stop(&mut self) {}
+    fn op_stop(&mut self) {
+        self.push_asm("STOP");
+    }
 
     /// lengthバイトpushする
     fn op_push(&mut self, length: usize) {
@@ -348,14 +393,15 @@ impl VM {
             self.pc += 1;
         }
         self.consume_gas(3);
+        self.push_asm("PUSH");
         self.push(operand.into());
     }
 
     /// スタックの先頭をスタックのindex+1番目にコピーする
     fn op_dup(&mut self, index: usize) {
         self.consume_gas(3);
-        println!("self.pc: {}", self.sp);
         let operand = self.stack[self.sp-1];
+        self.push_asm("DUP");
         if self.sp > 1 {
             self.stack[self.sp-index-1] = operand;
         } else {
@@ -366,6 +412,7 @@ impl VM {
     /// スタックの先頭をスタックのindex+1番目と交換する
     fn op_swap(&mut self, index: usize) {
         self.consume_gas(3);
+        self.push_asm("SWAP");
         let operand1 = self.stack[self.sp-1];
         let operand2 = self.stack[self.sp-index-1];
         self.stack[self.sp-1] = operand2;
@@ -376,6 +423,7 @@ impl VM {
     /// startを先頭アドレスしてstart+32までの32byteのメモリ領域にvalueを格納する
     fn op_mstore(&mut self) {
         self.consume_gas(6);
+        self.push_asm("MSTORE");
         let address = self.pop().as_u32() as usize;
         let value = self.pop();
         let bytes: [u8; 32] = value.into();
@@ -388,6 +436,7 @@ impl VM {
     /// ロードした値をstackの先頭にpush
     fn op_mload(&mut self) {
         self.consume_gas(3);
+        self.push_asm("MLOAD");
         let start = self.pop().as_u32() as usize;
         let mut bytes: [u8; 32] = [0; 32];
         for i in 0..32 {
@@ -400,6 +449,7 @@ impl VM {
 
     fn op_sload(&mut self, contract: &mut state::AccountState) {
         self.consume_gas(200);
+        self.push_asm("SLOAD");
         let key = self.pop();
         let value = contract.get_storage(&key);
         self.push(*value);
@@ -415,6 +465,7 @@ impl VM {
         } else {
             self.consume_gas(5000);
         }
+        self.push_asm("SSTORE");
 
         contract.set_storage(key, value);
     }
@@ -422,6 +473,7 @@ impl VM {
     /// スタックのoffsetからlength分のバイトデータを返り値として返す
     /// この命令を実行するとトランザクションは終了する？
     fn op_return(&mut self) {
+        self.push_asm("RETURN");
         let offset = self.pop().as_u32() as usize;
         let length = self.pop().as_u32() as usize;
 
@@ -432,6 +484,7 @@ impl VM {
     /// スタックからpopした値をstartとしてinputのstartの位置からstart+32の位置までの32byteのデータをstackにpush
     fn op_calldataload(&mut self) {
         self.consume_gas(3);
+        self.push_asm("CALLDATALOAD");
         let start = self.pop().as_u32() as usize;
         let bytes: [u8; 32] = util::slice_to_array(&self.env.input[start..]);
         self.push(bytes.into());
@@ -440,6 +493,7 @@ impl VM {
     /// inputに格納されたデータサイズをstackにpush
     fn op_calldatasize(&mut self) {
         self.consume_gas(2);
+        self.push_asm("CALLDATASIZE");
         let size = self.env.input.len();
         self.push(size.into());
     }
@@ -448,11 +502,13 @@ impl VM {
     /// このオペコードはそのマーカーとなるだけで単体では意味を持たない
     fn op_jumpdest(&mut self) {
         self.consume_gas(1);
+        self.push_asm("JUMPDEST");
     }
 
     /// スタックからdestinationをpopしてジャンプ
     fn op_jump(&mut self) {
         self.consume_gas(8);
+        self.push_asm("JUMP");
         let destination = self.pop().as_u32() as usize;
         
         // ジャンプ先のアドレスのオペコードはJUMPDESTでなければならない
@@ -467,6 +523,7 @@ impl VM {
     /// conditionが0以外ならdestinationにジャンプ
     fn op_jumpi(&mut self) {
         self.consume_gas(10);
+        self.push_asm("JUMPI");
         let destination = self.pop().as_u32() as usize;
         let condition = self.pop().as_u32() as usize;
         
@@ -484,6 +541,7 @@ impl VM {
     /// コントラクトにデプロイされたコードをコピーする
     fn op_codecopy(&mut self) {
         self.consume_gas(9); // ???
+        self.push_asm("CODECOPY");
         let dest_offset = self.pop().as_u32() as usize;
         let offset = self.pop().as_u32() as usize;
         let length = self.pop().as_u32() as usize;

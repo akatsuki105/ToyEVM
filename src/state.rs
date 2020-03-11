@@ -25,9 +25,7 @@ impl WorldState {
         config_file.read_to_string(&mut config_json).expect("something went wrong reading the file");
 
         // 構造体にパース
-        let mut ws: WorldState = serde_json::from_str(&config_json).unwrap();
-
-        ws.update_state();
+        let ws: WorldState = serde_json::from_str(&config_json).unwrap();
         return ws;
     }
 

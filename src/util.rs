@@ -1,3 +1,6 @@
+use ethereum_types::{H160};
+use std::str::FromStr;
+
 pub fn str_to_bytes(src: &str) -> Vec<u8> {
     let bytes = hex::decode(src).expect("str_to_bytes: decoding failed");
     return bytes;
@@ -23,4 +26,8 @@ pub fn slice_to_array(s: &[u8]) -> [u8; 32] {
 
 pub fn not_implement_panic() {
     panic!("not implement");
+}
+
+pub fn to_h160(s: &str) -> H160 {
+    return H160::from_str(s).unwrap();
 }

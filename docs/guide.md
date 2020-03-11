@@ -1,8 +1,4 @@
-# ToyEVM
-
-簡易的なEVM(Ethereum Virtual Machine)を実装することを目標としたRust製のレポジトリです。
-
-## Ethereum Virtual Machine について
+# Ethereum Virtual Machine について
 
 EVMはスタックベース、ビッグエンディアン形式の1ワード256bitとするバーチャルマシンであり、Ethereumブロックチェーン上でスマートコントラクトを実行されるために作られたものです。
 
