@@ -15,33 +15,81 @@ EVMはスタックベース、ビッグエンディアン形式の1ワード256b
 
 ほかのスタックベースのVMと同様に、オペコードはスタックの先頭からオペランドをPOPして実行結果をスタックにPUSHします。
 
-## ステートについて
+## Index
 
-EVMはステートを持ったバーチャルマシンです。
+- [EthereumのステートとEVM](#EthereumのステートとEVM)
+- [コントラクトのデプロイ](#コントラクトのデプロイ)
+- [コントラクトの実行](#コントラクトの実行)
+- [Gas](#Gas)
+- [Opcode一覧](#Opcode一覧)
 
-トランザクションをまたいでも保持されるStorageとトランザクションの間だけ保持されるMemoryに大別されます。 
+## EthereumのステートとEVM
 
-#### Storage
+EthereumのステートはWorld stateとAccount Stateのおおまかに2つに分けられます。
 
-Ethereumネットワークで共有されるステート。
+EVMはトランザクションの実行を通してこのステートを変更する役割を持ちます。
 
-アドレス一覧やアカウントの状態(残高、ストレージ、コントラクトコード)などを含んでいます。
+これらの状態はToyEVMにおいてはstate.rsで実装されています。
 
-ToyEVMにおいてはstate.rsで実装されています。
+#### World State
 
-#### Memory
+EthereumアドレスからAccount Stateへのマッピングです。
 
-Gas残量、PC、メモリ、スタックなどトランザクションの実行に必要な一時情報を含んでいるステートです。
+#### Account State
 
-このステートはToyEVMではstate.rsではなく、vm.rsでアクションの間、保持されるインスタンス変数に格納されます。
+Ethereumの残高、nonce、storage(後述するデータ領域)、コントラクトコードから構成されます。
 
-## コントラクトの作成
+nonceは、EOAではそのアカウントが実行したトランザクションの総数、コントラクトアカウントでは作成されたコントラクトの数を表します。
 
-スマートコントラクトを作るのに必要なデータそれ自体も、コントラクトのコンストラクタを実行するEVMバイトコードです。
+#### ステートへの反映
 
-コンストラクタはコントラクトの状態の初期化を行い、最後にコントラクトのEVMバイトコードを返します。
+トランザクション実行時には、EVMのインスタンスが作成されその中でコントラクトのEVMバイトコードを実行します。
 
-コンストラクタはコントラクトのデプロイ時にのみ実行されコントラクトデプロイ後にはコントラクト上に残りません。
+DBのトランザクションと同様に、Ethereumへのステートの反映はEVMインスタンスでトランザクションを完遂して初めて行われます。
+
+途中でgas不足などによりトランザクションが中断した場合はEthereumへのステート反映は行われることはありません。
+
+## コントラクトのデプロイ
+
+新しいコントラクトをEthereum上にデプロイするには、デプロイのための特別なトランザクションが必要になってきます。
+
+デプロイ用のトランザクションでは、トランザクションのtoフィールドをアドレス0x0に設定し、データフィールドをデプロイ用のEVMバイトコードにする必要があります。
+
+このバイトコードはデプロイするEVMバイトコードとは異なったものとなっています。
+
+例えば、`6005600401`というEVMバイトコードをデプロイするとするとします。
+
+これは逆アセンブルすると以下のようなコードになります。
+
+```
+PUSH1  05   // 6005 
+PUSH1  04   // 6004
+ADD         // 01
+```
+
+このバイトコードをデプロイする際に実行されるバイトコードは以下のように`600580600b6000396000f36005600401`なり元のバイトコードとは異なったものになっています。
+
+```
+// デプロイ用のバイトコード
+PUSH1  05   // 6005 
+DUP1        // 80
+PUSH1  0b   // 600b 
+PUSH1  00   // 6000
+CODECOPY    // 39 
+PUSH1  00   // 6000 
+RETURN      // f3 
+
+// 本体のコード
+PUSH1  05   // 6005 
+PUSH1  04   // 6004
+ADD         // 01
+```
+
+このデプロイ用のコードでは、最初にデプロイされるバイトコードの長さをスタックにpushしています。(PUSH1 05)
+
+そしてCODECOPYで0b-0b+05つまりデプロイされるバイトコードをメモリの先頭にコピーし、それをreturnで返しているため、デプロイを行うコード(`600580600b6000396000f36005600401`)の返り値はデプロイされるコード(`6005600401`)となります。
+
+この返り値がコントラクトのコードとしてEthereum上に登録されます。
 
 ## コントラクトの実行
 
@@ -94,11 +142,14 @@ CALL, CREATE命令はコントラクトにほかのコントラクトのアク�
 
 RETURN命令は、メモリからデータのまとまりを返り値として返す命令であり、SUICIDEはコントラクトを消去して、たまっていた資産を特定のアドレスに返す役割を持った命令です。
 
-## Opcodes
+## Gas
 
-|head|head|head|head|head|head|head|head|
-|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+[Gas](./gas.md)を参照
+
+## Opcode一覧
+
 |Value|Mnemonic|Gas Used|Subset|Removed from stack|Added to stack|Notes|Formula Notes|
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 |0x00|STOP|0|zero|0|0|Halts execution.||
 |0x01|ADD|3|verylow|2|1|Addition operation||
 |0x02|MUL|5|low|2|1|Multiplication operation.||
@@ -172,44 +223,9 @@ RETURN命令は、メモリからデータのまとまりを返り値として�
 
 ※ [opcode-gas-costs_EIP-150_revision-1e18248_2017-04-12.csv](https://github.com/djrtwo/evm-opcode-gas-costs/blob/master/opcode-gas-costs_EIP-150_revision-1e18248_2017-04-12.csv)から移植したものです
 
-## コントラクトへのデプロイ
-
-コントラクトデプロイ時には通常の場合と同様にトランザクションを起こしてEVMバイトコードを実行させる必要がありますが、このとき実行されるバイトコードはデプロイするEVMバイトコードとは異なったものが実行されます。
-
-例えば、`6005600401`というEVMバイトコードをデプロイするとするとします。
-
-これは逆アセンブルすると以下のようなコードになります。
-
-```
-PUSH1  05   // 6005 
-PUSH1  04   // 6004
-ADD         // 01
-```
-
-このバイトコードをデプロイする際に実行されるバイトコードは以下のように`600580600b6000396000f36005600401`なり元のバイトコードとは異なったものになっています。
-
-```
-// デプロイ用のバイトコード
-PUSH1  05   // 6005 
-DUP1        // 80
-PUSH1  0b   // 600b 
-PUSH1  00   // 6000
-CODECOPY    // 39 
-PUSH1  00   // 6000 
-RETURN      // f3 
-
-// 本体のコード
-PUSH1  05   // 6005 
-PUSH1  04   // 6004
-ADD         // 01
-```
-
-このデプロイ用のコードでは、最初にデプロイされるバイトコードの長さをスタックにpushしています。(PUSH1 05)
-
-そしてCODECOPYで0b-0b+05つまりデプロイされるバイトコードをメモリの先頭にコピーし、それをreturnで返しているため、デプロイを行うコード(`600580600b6000396000f36005600401`)の返り値はデプロイされるコード(`6005600401`)となります。
-
 ## 参考
 
-- https://ethervm.io/
-- https://github.com/djrtwo/evm-opcode-gas-costs/blob/master/opcode-gas-costs_EIP-150_revision-1e18248_2017-04-12.csv
-- https://github.com/CoinCulture/evm-tools/blob/master/analysis/guide.md
+- [Mastering Ethereum](https://www.oreilly.co.jp/books/9784873118963/)
+- [Ethereum Virtual Machine Opcodes](https://ethervm.io/)
+- [djrtwo/evm-opcode-gas-costs](https://github.com/djrtwo/evm-opcode-gas-costs/blob/master/opcode-gas-costs_EIP-150_revision-1e18248_2017-04-12.csv)
+- [CoinCulture/evm-tools](https://github.com/CoinCulture/evm-tools/blob/master/analysis/guide.md)

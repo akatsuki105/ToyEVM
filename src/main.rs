@@ -28,6 +28,7 @@ fn run() -> i32 {
                 return 0;
             },
             "run" => {}
+            "deploy" => {}
             _ => {
                 println!("subcommand is needed");
                 return 1;
