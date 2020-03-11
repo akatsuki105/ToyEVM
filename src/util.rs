@@ -1,10 +1,10 @@
 //! Utility function
-//! 
+//!
 //! # util.rs
-//! 
+//!
 //! ユーティリティ関数を集めたモジュール
 
-use ethereum_types::{H160};
+use ethereum_types::H160;
 use std::str::FromStr;
 
 pub fn str_to_bytes(src: &str) -> Vec<u8> {

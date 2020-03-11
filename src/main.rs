@@ -1,9 +1,13 @@
-mod vm;
+extern crate python_input;
+
+use python_input::input;
+
 mod state;
 mod util;
+mod vm;
+use ethereum_types::H160;
 use std::env;
 use std::process::exit;
-use ethereum_types::{H160};
 
 /// init
 fn main() {
@@ -24,11 +28,11 @@ fn run() -> i32 {
                 let code = &args[2][..];
                 vm::VM::disassemble(code);
                 return 0;
-            },
+            }
             "help" => {
                 help();
                 return 0;
-            },
+            }
             "run" => {}
             "deploy" => {}
             _ => {
@@ -41,20 +45,53 @@ fn run() -> i32 {
     let mut ws = state::WorldState::new("./config/config.json");
     // ステートの初期化
     ws.update_state();
-    println!("initial world state: {}", ws.get_hash());
-
-    let code_owner = util::to_h160("899C5C9bf8396Ba2c14f819C6D807b96990F86EE");
-    let sender = util::to_h160("9C2b303267DcFc6F247E777f1e412a2b08E57998");
-    transaction(&mut ws, code_owner, sender, 21000 , 100);
-
-    // ステートを更新
-    ws.update_state();
     println!("world state: {}", ws.get_hash());
+
+    loop {
+        let command = input("select next action: transaction(1) or deploy(2) => ")
+            .trim_end()
+            .to_string();
+
+        match &command[..] {
+            "transaction" | "1" => {
+                let code_owner = input("contract address    > ").trim_end().to_string();
+                let sender = input("sender address      > ").trim_end().to_string();
+                transaction(
+                    &mut ws,
+                    util::to_h160(&code_owner),
+                    util::to_h160(&sender),
+                    1_000_000_000,
+                    100_000_000_000_000_000,
+                );
+            }
+            "deploy" | "2" => {
+                println!("deploy");
+                continue;
+            }
+            "exit" | "quit" => {
+                return 0;
+            }
+            _ => {
+                println!("others");
+                continue;
+            }
+        }
+
+        // ステートを更新
+        ws.update_state();
+        println!("world state: {}", ws.get_hash());
+    }
     return 0;
 }
 
 /// execute transaction
-fn transaction(ws: &mut state::WorldState, code_owner: H160, sender: H160, gas_price: usize, value: usize) {
+fn transaction(
+    ws: &mut state::WorldState,
+    code_owner: H160,
+    sender: H160,
+    gas_price: usize,
+    value: usize,
+) {
     let mut env = vm::Environment::new(code_owner, sender, gas_price, value);
     let mut contract = ws.get_account_state(&code_owner);
     env.set_code(util::str_to_bytes(&contract.get_code()));

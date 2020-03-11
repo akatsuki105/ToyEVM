@@ -1,19 +1,19 @@
 //! Ethereum state
-//! 
+//!
 //! Ethereumにおけるステートを表現するモジュール
 
 extern crate ethereum_types;
 extern crate serde;
 extern crate serde_json;
 extern crate sha3;
-use std::fs::File;
-use std::io::prelude::*;
-use std::collections::HashMap;
 use super::util;
 use sha3::{Digest, Sha3_256};
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::prelude::*;
 
 use ethereum_types::{H160, U256};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct WorldState {
@@ -26,7 +26,9 @@ impl WorldState {
         // configファイルを読み込む
         let mut config_file = File::open(config).expect("config file not found");
         let mut config_json = String::new();
-        config_file.read_to_string(&mut config_json).expect("something went wrong reading the file");
+        config_file
+            .read_to_string(&mut config_json)
+            .expect("something went wrong reading the file");
 
         // 構造体にパース
         let ws: WorldState = serde_json::from_str(&config_json).unwrap();
@@ -54,17 +56,20 @@ impl WorldState {
     }
 
     pub fn get_account_state(&mut self, address: &H160) -> &mut AccountState {
-        let account_state = self.addresses.get_mut(address).expect("key is not found in storage.");
+        let account_state = self
+            .addresses
+            .get_mut(address)
+            .expect("key is not found in storage.");
         return account_state;
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccountState {
-    nonce: usize, // ナンス
-    balance: U256, // 残高(wei)
+    nonce: usize,                 // ナンス
+    balance: U256,                // 残高(wei)
     storage: HashMap<U256, U256>, // storage
-    code: String, // コントラクトコード
+    code: String,                 // コントラクトコード
 }
 
 impl AccountState {

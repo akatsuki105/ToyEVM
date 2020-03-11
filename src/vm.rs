@@ -1,23 +1,23 @@
 //! EVM instance
-//! 
+//!
 //! EthereumにおけるEVMインスタンスを管理するモジュール
 
 extern crate ethereum_types;
 extern crate hex;
 
-use super::util;
-use util::not_implement_panic;
 use super::state;
+use super::util;
 use ethereum_types::{H160, U256};
+use util::not_implement_panic;
 
 /// トランザクション実行に必要な環境変数
 pub struct Environment {
     code_owner: H160, // 実行するコントラクトのオーナー
-    sender: H160, // トランザクションの送信者
+    sender: H160,     // トランザクションの送信者
     gas_price: usize, // gasのETHレート
-    value: usize, // トランザクションに添付されたEth
-    code: Vec<u8>, // 実行されるEVMバイトコード
-    input: Vec<u8>, // トランザクションに渡されるデータ(solidityでは引数として渡される)
+    value: usize,     // トランザクションに添付されたEth
+    code: Vec<u8>,    // 実行されるEVMバイトコード
+    input: Vec<u8>,   // トランザクションに渡されるデータ(solidityでは引数として渡される)
 }
 
 impl Environment {
@@ -29,7 +29,7 @@ impl Environment {
             value,
             code: Default::default(),
             input: Default::default(),
-        }
+        };
     }
 
     /// コードをセットする
@@ -46,11 +46,11 @@ impl Environment {
 /// EVMインスタンス
 pub struct VM {
     env: Environment, // 環境変数
-    pc: usize, // Program Counter
-    gas: usize, // gas残量
-    sp: usize, // スタックポインタ
+    pc: usize,        // Program Counter
+    gas: usize,       // gas残量
+    sp: usize,        // スタックポインタ
     stack: Vec<U256>, // トランザクションのライフサイクルの間保持される一時的なスタック領域
-    memory: Vec<u8>, // トランザクションのライフサイクルの間保持される一時的なメモリ領域
+    memory: Vec<u8>,  // トランザクションのライフサイクルの間保持される一時的なメモリ領域
     asm: Vec<String>, // 実行した命令を入れておく 逆アセンブルに利用
 }
 
@@ -127,7 +127,11 @@ impl VM {
             0x80 => self.op_dup(1),
             0x90 => self.op_swap(1),
             0xf3 => self.op_return(),
-            _ => panic!("exec: invalid opcode. PC: {} Opcode: {}", self.pc-1, opcode),
+            _ => panic!(
+                "exec: invalid opcode. PC: {} Opcode: {}",
+                self.pc - 1,
+                opcode
+            ),
         }
 
         // トランザクションを終了させるかのフラグ returnのみtrue
@@ -394,7 +398,7 @@ impl VM {
     fn op_push(&mut self, length: usize) {
         let mut operand = [0; 32];
         for i in 0..length {
-            operand[32-length+i] = self.env.code[self.pc];
+            operand[32 - length + i] = self.env.code[self.pc];
             self.pc += 1;
         }
         self.consume_gas(3);
@@ -405,10 +409,10 @@ impl VM {
     /// スタックの先頭をスタックのindex+1番目にコピーする
     fn op_dup(&mut self, index: usize) {
         self.consume_gas(3);
-        let operand = self.stack[self.sp-1];
+        let operand = self.stack[self.sp - 1];
         self.push_asm("DUP");
         if self.sp > 1 {
-            self.stack[self.sp-index-1] = operand;
+            self.stack[self.sp - index - 1] = operand;
         } else {
             self.push(operand);
         }
@@ -418,10 +422,10 @@ impl VM {
     fn op_swap(&mut self, index: usize) {
         self.consume_gas(3);
         self.push_asm("SWAP");
-        let operand1 = self.stack[self.sp-1];
-        let operand2 = self.stack[self.sp-index-1];
-        self.stack[self.sp-1] = operand2;
-        self.stack[self.sp-index-1] = operand1;
+        let operand1 = self.stack[self.sp - 1];
+        let operand2 = self.stack[self.sp - index - 1];
+        self.stack[self.sp - 1] = operand2;
+        self.stack[self.sp - index - 1] = operand1;
     }
 
     /// スタックからstart, valueをpop<br/>
@@ -433,7 +437,7 @@ impl VM {
         let value = self.pop();
         let bytes: [u8; 32] = value.into();
         for (i, b) in bytes.iter().enumerate() {
-            self.memory.insert(address+i, *b);
+            self.memory.insert(address + i, *b);
         }
     }
 
@@ -445,10 +449,9 @@ impl VM {
         let start = self.pop().as_u32() as usize;
         let mut bytes: [u8; 32] = [0; 32];
         for i in 0..32 {
-            let b = self.memory[start+i];
+            let b = self.memory[start + i];
             bytes[i] = b;
         }
-        
         self.push(bytes.into());
     }
 
@@ -487,7 +490,7 @@ impl VM {
         let offset = self.pop().as_u32() as usize;
         let length = self.pop().as_u32() as usize;
 
-        let return_value = &self.memory[offset..offset+length];
+        let return_value = &self.memory[offset..offset + length];
         println!("return: {:?}", return_value);
     }
 
@@ -520,7 +523,6 @@ impl VM {
         self.consume_gas(8);
         self.push_asm("JUMP");
         let destination = self.pop().as_u32() as usize;
-        
         // ジャンプ先のアドレスのオペコードはJUMPDESTでなければならない
         if self.env.code[destination] != 0x5b {
             panic!("op_jump: destination must be JUMPDEST");
@@ -536,7 +538,6 @@ impl VM {
         self.push_asm("JUMPI");
         let destination = self.pop().as_u32() as usize;
         let condition = self.pop().as_u32() as usize;
-        
         // ジャンプ先のアドレスのオペコードはJUMPDESTでなければならない
         if self.env.code[destination] != 0x5b {
             panic!("op_jumpi: destination must be JUMPDEST");
@@ -557,10 +558,10 @@ impl VM {
         let length = self.pop().as_u32() as usize;
 
         for i in 0..length {
-            let b = self.env.code[offset+i];
-            self.memory.insert(dest_offset+i, b);
+            let b = self.env.code[offset + i];
+            self.memory.insert(dest_offset + i, b);
         }
-    } 
+    }
 }
 
 #[test]
@@ -692,7 +693,6 @@ fn test_add2() {
     assert_eq!(vm.stack, vec![0x0203.into()]);
 }
 
-
 #[test]
 fn test_calldataload() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
@@ -711,7 +711,9 @@ fn test_calldataload() {
 fn test_calldatasize() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("36"));
-    env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    env.set_input(util::str_to_bytes(
+        "0000000000000000000000000000000000000000000000000000000000000005",
+    ));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
     vm.exec_transaction(&mut contract);
@@ -724,8 +726,12 @@ fn test_calldatasize() {
 #[test]
 fn test_jumpi() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(util::str_to_bytes("6000356000525b600160005103600052600051600657"));
-    env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    env.set_code(util::str_to_bytes(
+        "6000356000525b600160005103600052600051600657",
+    ));
+    env.set_input(util::str_to_bytes(
+        "0000000000000000000000000000000000000000000000000000000000000005",
+    ));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
     for _ in 0..14 {
@@ -766,7 +772,9 @@ fn test_swap1() {
 fn test_loop() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
     env.set_code(util::str_to_bytes("6000355b6001900380600357"));
-    env.set_input(util::str_to_bytes("0000000000000000000000000000000000000000000000000000000000000005"));
+    env.set_input(util::str_to_bytes(
+        "0000000000000000000000000000000000000000000000000000000000000005",
+    ));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
     for _ in 0..8 {
@@ -805,7 +813,9 @@ fn test_loop() {
 #[test]
 fn test_loop2() {
     let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
-    env.set_code(util::str_to_bytes("366020036101000a600035045b6001900380600c57"));
+    env.set_code(util::str_to_bytes(
+        "366020036101000a600035045b6001900380600c57",
+    ));
     env.set_input(util::str_to_bytes("01"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());

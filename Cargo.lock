@@ -247,6 +247,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "python-input"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc47e4a0b08b4cbcf13fe89c1e539413b96ab9166a6889cbbab9af636b80782d"
+
+[[package]]
 name = "quote"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -393,6 +399,7 @@ version = "0.1.0"
 dependencies = [
  "ethereum-types",
  "hex",
+ "python-input",
  "serde",
  "serde_json",
  "sha3",
