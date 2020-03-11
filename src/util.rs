@@ -1,3 +1,9 @@
+//! Utility function
+//! 
+//! # util.rs
+//! 
+//! ユーティリティ関数を集めたモジュール
+
 use ethereum_types::{H160};
 use std::str::FromStr;
 

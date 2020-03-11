@@ -5,10 +5,12 @@ use std::env;
 use std::process::exit;
 use ethereum_types::{H160};
 
+/// init
 fn main() {
     exit(run());
 }
 
+/// execute application
 fn run() -> i32 {
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
@@ -24,7 +26,7 @@ fn run() -> i32 {
                 return 0;
             },
             "help" => {
-                print_help();
+                help();
                 return 0;
             },
             "run" => {}
@@ -51,6 +53,7 @@ fn run() -> i32 {
     return 0;
 }
 
+/// execute transaction
 fn transaction(ws: &mut state::WorldState, code_owner: H160, sender: H160, gas_price: usize, value: usize) {
     let mut env = vm::Environment::new(code_owner, sender, gas_price, value);
     let mut contract = ws.get_account_state(&code_owner);
@@ -62,7 +65,8 @@ fn transaction(ws: &mut state::WorldState, code_owner: H160, sender: H160, gas_p
     sender_account.increment_nonce();
 }
 
-fn print_help() {
+/// print help
+fn help() {
     println!("usage: toyevm <command> [<args>] ");
     println!();
     println!("run       start EVM");

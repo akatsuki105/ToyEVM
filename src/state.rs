@@ -1,3 +1,7 @@
+//! Ethereum state
+//! 
+//! Ethereumにおけるステートを表現するモジュール
+
 extern crate ethereum_types;
 extern crate serde;
 extern crate serde_json;
@@ -57,10 +61,10 @@ impl WorldState {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccountState {
-    nonce: usize,
-    balance: U256,
-    storage: HashMap<U256, U256>,
-    code: String,
+    nonce: usize, // ナンス
+    balance: U256, // 残高(wei)
+    storage: HashMap<U256, U256>, // storage
+    code: String, // コントラクトコード
 }
 
 impl AccountState {

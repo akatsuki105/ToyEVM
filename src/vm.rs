@@ -1,3 +1,7 @@
+//! EVM instance
+//! 
+//! EthereumにおけるEVMインスタンスを管理するモジュール
+
 extern crate ethereum_types;
 extern crate hex;
 
@@ -6,8 +10,7 @@ use util::not_implement_panic;
 use super::state;
 use ethereum_types::{H160, U256};
 
-/// トランザクションを実行するのに必要となる環境変数
-#[allow(dead_code)]
+/// トランザクション実行に必要な環境変数
 pub struct Environment {
     code_owner: H160, // 実行するコントラクトのオーナー
     sender: H160, // トランザクションの送信者
@@ -17,9 +20,7 @@ pub struct Environment {
     input: Vec<u8>, // トランザクションに渡されるデータ(solidityでは引数として渡される)
 }
 
-#[allow(dead_code)]
 impl Environment {
-    /// 環境変数のコンストラクタ
     pub fn new(code_owner: H160, sender: H160, gas_price: usize, value: usize) -> Self {
         return Self {
             code_owner,
@@ -43,7 +44,6 @@ impl Environment {
 }
 
 /// EVMインスタンス
-#[allow(dead_code)]
 pub struct VM {
     env: Environment, // 環境変数
     pc: usize, // Program Counter
@@ -56,12 +56,13 @@ pub struct VM {
 
 /// Opcodeの実行で使われる汎用的な関数を実装している
 impl VM {
-    /// コンストラクタ gasは10000000000とする
     pub fn new(env: Environment) -> Self {
+        let gas = env.value / env.gas_price;
+
         Self {
             env,
             pc: 0,
-            gas: 10000000000,
+            gas,
             sp: 0,
             stack: Default::default(),
             memory: Default::default(),
@@ -259,6 +260,7 @@ impl VM {
 
 /// 条件
 impl VM {
+    /// operand1(スタック1番目) < operand2(スタック2番目)
     fn op_lt(&mut self) {
         self.consume_gas(3);
         self.push_asm("LT");
@@ -271,6 +273,7 @@ impl VM {
         }
     }
 
+    /// operand1(スタック1番目) > operand2(スタック2番目)
     fn op_gt(&mut self) {
         self.consume_gas(3);
         self.push_asm("GT");
@@ -293,6 +296,7 @@ impl VM {
         not_implement_panic();
     }
 
+    /// operand1(スタック1番目) == operand2(スタック2番目)
     fn op_eq(&mut self) {
         self.consume_gas(3);
         self.push_asm("EQ");
@@ -305,6 +309,7 @@ impl VM {
         }
     }
 
+    /// operand1(スタック1番目) == 0
     fn op_is_zero(&mut self) {
         self.consume_gas(3);
         self.push_asm("ISZERO");
@@ -419,7 +424,7 @@ impl VM {
         self.stack[self.sp-index-1] = operand1;
     }
 
-    /// スタックからstart, valueをpop
+    /// スタックからstart, valueをpop<br/>
     /// startを先頭アドレスしてstart+32までの32byteのメモリ領域にvalueを格納する
     fn op_mstore(&mut self) {
         self.consume_gas(6);
@@ -432,7 +437,7 @@ impl VM {
         }
     }
 
-    /// スタックからpopしたstartを先頭アドレスしてstart+32までの32byteの値をメモリからロード
+    /// スタックからpopしたstartを先頭アドレスしてstart+32までの32byteの値をメモリからロード<br/>
     /// ロードした値をstackの先頭にpush
     fn op_mload(&mut self) {
         self.consume_gas(3);
@@ -447,6 +452,8 @@ impl VM {
         self.push(bytes.into());
     }
 
+    /// スタックからpopした値をkeyとしてstorageから対応する値をロード<br/>
+    /// ロードした値をstackの先頭にpush
     fn op_sload(&mut self, contract: &mut state::AccountState) {
         self.consume_gas(200);
         self.push_asm("SLOAD");
@@ -455,6 +462,9 @@ impl VM {
         self.push(*value);
     }
 
+    /// key: operand1(スタック1番目)<br/>
+    /// value: operand2(スタック2番目)<br/>
+    /// としてstorageに書き込みを行う storage[key] = value
     fn op_sstore(&mut self, contract: &mut state::AccountState) {
         let key = self.pop();
         let value = self.pop();
@@ -470,7 +480,7 @@ impl VM {
         contract.set_storage(key, value);
     }
 
-    /// スタックのoffsetからlength分のバイトデータを返り値として返す
+    /// スタックのoffsetからlength分のバイトデータを返り値として返す<br/>
     /// この命令を実行するとトランザクションは終了する？
     fn op_return(&mut self) {
         self.push_asm("RETURN");
@@ -498,7 +508,7 @@ impl VM {
         self.push(size.into());
     }
 
-    /// 動的ジャンプを行う際にスタックからpopした値が示すアドレスにジャンプするが、そのアドレスではこのop_jumpdestがオペコードでなければならない
+    /// 動的ジャンプを行う際にスタックからpopした値が示すアドレスにジャンプするが、そのアドレスではこのop_jumpdestがオペコードでなければならない<br/>
     /// このオペコードはそのマーカーとなるだけで単体では意味を持たない
     fn op_jumpdest(&mut self) {
         self.consume_gas(1);
@@ -519,7 +529,7 @@ impl VM {
         self.pc = destination + 1; // TODO: +1が必要か調査する
     }
 
-    /// スタックからdestination, conditionをpop
+    /// スタックからdestination, conditionをpop<br/>
     /// conditionが0以外ならdestinationにジャンプ
     fn op_jumpi(&mut self) {
         self.consume_gas(10);
