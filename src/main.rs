@@ -65,8 +65,8 @@ fn run() -> i32 {
                 );
             }
             "deploy" | "2" => {
-                println!("deploy");
-                continue;
+                let code = &input("contract code      > ").trim_end().to_string();
+                deploy(&mut ws, code);
             }
             "exit" | "quit" => {
                 return 0;
@@ -100,6 +100,15 @@ fn transaction(
 
     let mut sender_account = ws.get_account_state(&sender);
     sender_account.increment_nonce();
+}
+
+/// deploy contract
+fn deploy(ws: &mut state::WorldState, code: &str) {
+    // TODO: 正確にする
+    let account_state = state::AccountState::new(code.to_string());
+    let address = H160::random();
+    ws.push_account_state(address, account_state);
+    println!("{} is deployed!", hex::encode(address));
 }
 
 /// print help

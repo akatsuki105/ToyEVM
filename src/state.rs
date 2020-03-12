@@ -44,6 +44,10 @@ impl WorldState {
         self.hash = self.calc_hash(account_hashs);
     }
 
+    pub fn push_account_state(&mut self, address: H160, account_state: AccountState) {
+        self.addresses.insert(address, account_state);
+    }
+
     /// 計算方法がよくわからない とりあえず連結してhashとる
     fn calc_hash(&self, account_hashs: Vec<String>) -> String {
         let hash = util::str_to_bytes(&account_hashs.join(""));

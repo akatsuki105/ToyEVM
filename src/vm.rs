@@ -52,6 +52,7 @@ pub struct VM {
     stack: Vec<U256>, // トランザクションのライフサイクルの間保持される一時的なスタック領域
     memory: Vec<u8>,  // トランザクションのライフサイクルの間保持される一時的なメモリ領域
     asm: Vec<String>, // 実行した命令を入れておく 逆アセンブルに利用
+    returns: Vec<u8>, // アクションの返り値
 }
 
 /// Opcodeの実行で使われる汎用的な関数を実装している
@@ -67,6 +68,7 @@ impl VM {
             stack: Default::default(),
             memory: Default::default(),
             asm: Default::default(),
+            returns: Default::default(),
         }
     }
 
@@ -163,7 +165,12 @@ impl VM {
     }
 
     pub fn disassemble(code: &str) {
-        let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+        let mut env = Environment::new(
+            Default::default(),
+            Default::default(),
+            1_000_000_000,
+            100_000_000_000_000_000,
+        );
         env.set_code(util::str_to_bytes(code));
         let mut vm = VM::new(env);
         let mut contract = state::AccountState::new(code.to_string());
@@ -397,12 +404,15 @@ impl VM {
     /// lengthバイトpushする
     fn op_push(&mut self, length: usize) {
         let mut operand = [0; 32];
+        let mut operand_str = "".to_string();
         for i in 0..length {
             operand[32 - length + i] = self.env.code[self.pc];
+            operand_str += &hex::encode(vec![self.env.code[self.pc]]);
             self.pc += 1;
         }
         self.consume_gas(3);
-        self.push_asm("PUSH");
+        let asm = "PUSH".to_string() + " " + &operand_str;
+        self.push_asm(&asm);
         self.push(operand.into());
     }
 
@@ -491,7 +501,7 @@ impl VM {
         let length = self.pop().as_u32() as usize;
 
         let return_value = &self.memory[offset..offset + length];
-        println!("return: {:?}", return_value);
+        self.returns = Vec::from(return_value);
     }
 
     /// スタックからpopした値をstartとしてinputのstartの位置からstart+32の位置までの32byteのデータをstackにpush
