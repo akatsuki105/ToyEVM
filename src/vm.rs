@@ -221,13 +221,23 @@ impl VM {
             0x9d => self.op_swap(14),
             0x9e => self.op_swap(15),
             0x9f => self.op_swap(16),
+            // 0xa0
+            0xa0 => self.op_log0(),
+            0xa1 => self.op_log1(),
+            0xa2 => self.op_log2(),
+            0xa3 => self.op_log3(),
+            0xa4 => self.op_log4(),
             // 0xf0
+            0xf0 => self.op_create(),
+            0xf1 => self.op_call(),
+            0xf2 => self.op_callcode(),
             0xf3 => self.op_return(),
-            _ => panic!(
-                "exec: invalid opcode. PC: {} Opcode: {}",
-                self.pc - 1,
-                opcode
-            ),
+            0xf4 => self.op_delegatecall(),
+            0xf5 => self.op_create2(),
+            0xfa => self.op_staticcall(),
+            0xfd => self.op_revert(),
+            0xff => self.op_selfdestruct(),
+            _ => not_implement_panic(),
         }
 
         // トランザクションを終了させるかのフラグ returnのみtrue
@@ -282,7 +292,12 @@ impl VM {
 
 /// 0x00: 算術命令
 impl VM {
-    /// operand1(スタック1番目) + operand2(スタック2番目)
+    /// 0x00: 何もしない
+    fn op_stop(&mut self) {
+        self.push_asm("STOP");
+    }
+
+    /// 0x01: operand1(スタック1番目) + operand2(スタック2番目)
     fn op_add(&mut self) {
         self.consume_gas(3);
         self.push_asm("ADD");
@@ -292,7 +307,7 @@ impl VM {
         self.push(result);
     }
 
-    /// operand1(スタック1番目) * operand2(スタック2番目)
+    /// 0x02: operand1(スタック1番目) * operand2(スタック2番目)
     fn op_mul(&mut self) {
         self.consume_gas(5);
         self.push_asm("MUL");
@@ -807,17 +822,60 @@ impl VM {
     }
 }
 
-impl VM {}
-
-impl VM {}
-
-/// その他
+/// 0xa0: ログ
 impl VM {
-    fn op_stop(&mut self) {
-        self.push_asm("STOP");
+    /// 0xa0:
+    fn op_log0(&mut self) {
+        self.push_asm("LOG0");
+        not_implement_panic();
     }
 
-    /// スタックのoffsetからlength分のバイトデータを返り値として返す<br/>
+    /// 0xa1:
+    fn op_log1(&mut self) {
+        self.push_asm("LOG1");
+        not_implement_panic();
+    }
+
+    /// 0xa2:
+    fn op_log2(&mut self) {
+        self.push_asm("LOG2");
+        not_implement_panic();
+    }
+
+    /// 0xa3:
+    fn op_log3(&mut self) {
+        self.push_asm("LOG3");
+        not_implement_panic();
+    }
+
+    /// 0xa4:
+    fn op_log4(&mut self) {
+        self.push_asm("LOG4");
+        not_implement_panic();
+    }
+}
+
+/// 0xf0:
+impl VM {
+    /// 0xf0:
+    fn op_create(&mut self) {
+        self.push_asm("CREATE");
+        not_implement_panic();
+    }
+
+    /// 0xf1:
+    fn op_call(&mut self) {
+        self.push_asm("CALL");
+        not_implement_panic();
+    }
+
+    /// 0xf2:
+    fn op_callcode(&mut self) {
+        self.push_asm("CALLCODE");
+        not_implement_panic();
+    }
+
+    /// 0xf3: スタックのoffsetからlength分のバイトデータを返り値として返す<br/>
     /// この命令を実行するとトランザクションは終了する？
     fn op_return(&mut self) {
         self.push_asm("RETURN");
@@ -827,11 +885,46 @@ impl VM {
         let return_value = &self.memory[offset..offset + length];
         self.returns = Vec::from(return_value);
     }
+
+    /// 0xf4:
+    fn op_delegatecall(&mut self) {
+        self.push_asm("DELEGATECALL");
+        not_implement_panic();
+    }
+
+    /// 0xf5:
+    fn op_create2(&mut self) {
+        self.push_asm("CREATE2");
+        not_implement_panic();
+    }
+
+    /// 0xfa:
+    fn op_staticcall(&mut self) {
+        self.push_asm("STATICCALL");
+        not_implement_panic();
+    }
+
+    /// 0xfd:
+    fn op_revert(&mut self) {
+        self.push_asm("REVERT");
+        not_implement_panic();
+    }
+
+    /// 0xff:
+    fn op_selfdestruct(&mut self) {
+        self.push_asm("SELFDESTRUCT");
+        not_implement_panic();
+    }
 }
 
 #[test]
 fn test_new() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6005600401"));
     let vm = VM::new(env);
     assert_eq!(vm.env.code, vec![0x60, 0x05, 0x60, 0x04, 0x01]);
@@ -843,7 +936,12 @@ fn test_new() {
 
 #[test]
 fn test_push1() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6005"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -856,7 +954,12 @@ fn test_push1() {
 
 #[test]
 fn test_add() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6005600401"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -869,7 +972,12 @@ fn test_add() {
 
 #[test]
 fn test_sub() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6004600503"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -882,7 +990,12 @@ fn test_sub() {
 
 #[test]
 fn test_mul() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6003600602"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -895,7 +1008,12 @@ fn test_mul() {
 
 #[test]
 fn test_div() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6003600604"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -908,7 +1026,12 @@ fn test_div() {
 
 #[test]
 fn test_exp() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("600360020a"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -921,7 +1044,12 @@ fn test_exp() {
 
 #[test]
 fn test_mstore() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6005600401600052"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -934,7 +1062,12 @@ fn test_mstore() {
 
 #[test]
 fn test_mload() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6005600401600052600051"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -947,7 +1080,12 @@ fn test_mload() {
 
 #[test]
 fn test_add2() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("61010161010201"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -960,7 +1098,12 @@ fn test_add2() {
 
 #[test]
 fn test_calldataload() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("60003560203501"));
     env.set_input(util::str_to_bytes("00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000004"));
     let mut vm = VM::new(env);
@@ -974,7 +1117,12 @@ fn test_calldataload() {
 
 #[test]
 fn test_calldatasize() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("36"));
     env.set_input(util::str_to_bytes(
         "0000000000000000000000000000000000000000000000000000000000000005",
@@ -990,7 +1138,12 @@ fn test_calldatasize() {
 
 #[test]
 fn test_jumpi() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes(
         "6000356000525b600160005103600052600051600657",
     ));
@@ -1009,7 +1162,12 @@ fn test_jumpi() {
 
 #[test]
 fn test_dup1() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6005600480"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -1022,7 +1180,12 @@ fn test_dup1() {
 
 #[test]
 fn test_swap1() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6005600490"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());
@@ -1035,7 +1198,12 @@ fn test_swap1() {
 
 #[test]
 fn test_loop() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("6000355b6001900380600357"));
     env.set_input(util::str_to_bytes(
         "0000000000000000000000000000000000000000000000000000000000000005",
@@ -1077,7 +1245,12 @@ fn test_loop() {
 /// ```
 #[test]
 fn test_loop2() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes(
         "366020036101000a600035045b6001900380600c57",
     ));
@@ -1091,7 +1264,12 @@ fn test_loop2() {
 
 #[test]
 fn test_deploy() {
-    let mut env = Environment::new(Default::default(), Default::default(), 1, 1);
+    let mut env = Environment::new(
+        Default::default(),
+        Default::default(),
+        10_000_000,
+        100_000_000_000_000_000,
+    );
     env.set_code(util::str_to_bytes("600580600b6000396000f36005600401"));
     let mut vm = VM::new(env);
     let mut contract = state::AccountState::new("".to_string());

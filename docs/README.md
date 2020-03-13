@@ -1,3 +1,5 @@
+![logo](logo.png)
+
 # 🚗 ToyEVM
 
 簡易的な EVM(Ethereum Virtual Machine)を実装することを目標とした Rust 製のレポジトリです。
