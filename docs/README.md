@@ -1,4 +1,4 @@
-![logo](logo.png)
+<img src="logo.png" width="1024px" height="200px" />
 
 # 🚗 ToyEVM
 
