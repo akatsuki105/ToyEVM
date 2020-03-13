@@ -1,3 +1,5 @@
+<img src="logo.png" width="1024px" height="180px" />
+
 # 🚗 ToyEVM
 
 簡易的な EVM(Ethereum Virtual Machine)を実装することを目標とした Rust 製のレポジトリです。
@@ -53,3 +55,11 @@ ADD
 EVM の初期状態は、`config/config.json`に記述されています。
 
 これを変更することで EVM の初期状態を変更することが可能です。
+
+#### 未実装のオペコード
+
+Toy なのでいくつか実装していないオペコードがあります。
+
+また Gas の正確な実装もまだまだです。
+
+今後実装予定です。

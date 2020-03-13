@@ -1,10 +1,10 @@
 # 📄 Source Code
 
-ここではToyEVMのソースコードについて解説します。
+ここでは ToyEVM のソースコードについて解説します。
 
 ## 📟 `vm.rs`
 
-EthereumにおけるEVMインスタンスを管理するモジュール
+Ethereum における EVM インスタンスを管理するモジュール
 
 #### Environment
 
@@ -23,7 +23,7 @@ pub struct Environment {
 
 #### VM
 
-EVMインスタンス本体です。
+EVM インスタンス本体です。
 
 ```rs
 pub struct VM {
@@ -34,21 +34,22 @@ pub struct VM {
     stack: Vec<U256>, // トランザクションのライフサイクルの間保持される一時的なスタック領域
     memory: Vec<u8>, // トランザクションのライフサイクルの間保持される一時的なメモリ領域
     asm: Vec<String>, // 実行した命令を入れておく 逆アセンブルに利用
+    returns: Vec<u8>, // アクションの返り値
 }
 ```
 
 #### 実行の流れ
 
-基本的には普通のCPUやVM同様に
+基本的には普通の CPU や VM 同様に
 
-1. PCが示すバイトコードをfetch
-2. 対応するオペコードをexec
+1. PC が示すバイトコードを fetch
+2. 対応するオペコードを exec
 
 を繰り返すのみです。
 
 ## 🌏 `state.rs`
 
-Ethereumにおけるステートを表現するモジュール
+Ethereum におけるステートを表現するモジュール
 
 #### World State
 
@@ -63,7 +64,7 @@ pub struct WorldState {
 
 #### Account State
 
-今回の実装では、EOAとコントラクトアカウントで構造体を分けたりはしていません。
+今回の実装では、EOA とコントラクトアカウントで構造体を分けたりはしていません。
 
 ```rs
 pub struct AccountState {
