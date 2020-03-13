@@ -2,6 +2,8 @@
 
 # 🚗 ToyEVM
 
+![Rust](https://github.com/Akatsuki-py/ToyEVM/workflows/Rust/badge.svg)
+
 簡易的な EVM(Ethereum Virtual Machine)を実装することを目標とした Rust 製のレポジトリです。
 
 ## ⛓ Ethereum Virtual Machine

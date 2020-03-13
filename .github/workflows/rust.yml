@@ -1,5 +1,10 @@
 name: Rust
-on: push
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - "docs/**"
 
 jobs:
   build:
