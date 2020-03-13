@@ -63,16 +63,26 @@ fn run() -> i32 {
                     1_000_000_000,
                     100_000_000_000_000_000,
                 );
+                println!();
             }
             "deploy" | "2" => {
                 let code = &input("contract code      > ").trim_end().to_string();
                 deploy(&mut ws, code);
+                println!();
             }
             "exit" | "quit" => {
                 return 0;
             }
-            _ => {
-                println!("others");
+            "help" => {
+                println!("help");
+                println!("transaction or 1: execute transaction");
+                println!("deploy or 2: deploy contract");
+                println!("exit or quit: quit EVM");
+                println!("help: print help");
+                println!();
+            }
+            c => {
+                println!("{} is invalid command", c);
                 continue;
             }
         }
