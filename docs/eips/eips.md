@@ -6,4 +6,5 @@ The Ethereum Improvement Proposal 略して EIP についてまとめたもの�
 
 - [EIP1014](./eip-1014.md)
 - [EIP1077](./eip-1077.md)
+- [EIP1271](./eip-1271.md)
 - [EIP1776](./eip-1776.md)
