@@ -116,6 +116,7 @@ impl VM {
             0x17 => self.op_or(),
             0x18 => self.op_xor(),
             0x19 => self.op_not(),
+            0x1a => self.op_byte(),
             // 0x20
             0x20 => self.op_sha3(),
             // 0x30
@@ -317,7 +318,7 @@ impl VM {
         self.push(result);
     }
 
-    /// operand1(スタック1番目) - operand2(スタック2番目)
+    /// 0x03: operand1(スタック1番目) - operand2(スタック2番目)
     fn op_sub(&mut self) {
         self.consume_gas(3);
         self.push_asm("SUB");
@@ -327,7 +328,7 @@ impl VM {
         self.push(result);
     }
 
-    /// operand1(スタック1番目) // operand2(スタック2番目)
+    /// 0x04: operand1(スタック1番目) // operand2(スタック2番目)
     fn op_div(&mut self) {
         self.consume_gas(5);
         self.push_asm("DIV");
@@ -362,7 +363,7 @@ impl VM {
         not_implement_panic();
     }
 
-    /// operand1(スタック1番目) ** operand2(スタック2番目)
+    /// 0x0a: operand1(スタック1番目) ** operand2(スタック2番目)
     fn op_exp(&mut self) {
         self.consume_gas(10);
         self.push_asm("EXP");
@@ -372,6 +373,7 @@ impl VM {
         self.push(result);
     }
 
+    /// 0x0b:
     fn op_sig_next_end(&mut self) {
         self.push_asm("SIGNEXTEND");
         not_implement_panic();
@@ -380,7 +382,7 @@ impl VM {
 
 /// 0x10: 条件、ビット演算
 impl VM {
-    /// operand1(スタック1番目) < operand2(スタック2番目)
+    /// 0x10: operand1(スタック1番目) < operand2(スタック2番目)
     fn op_lt(&mut self) {
         self.consume_gas(3);
         self.push_asm("LT");
@@ -393,7 +395,7 @@ impl VM {
         }
     }
 
-    /// operand1(スタック1番目) > operand2(スタック2番目)
+    /// 0x11: operand1(スタック1番目) > operand2(スタック2番目)
     fn op_gt(&mut self) {
         self.consume_gas(3);
         self.push_asm("GT");
@@ -416,7 +418,7 @@ impl VM {
         not_implement_panic();
     }
 
-    /// operand1(スタック1番目) == operand2(スタック2番目)
+    /// 0x14: operand1(スタック1番目) == operand2(スタック2番目)
     fn op_eq(&mut self) {
         self.consume_gas(3);
         self.push_asm("EQ");
@@ -429,7 +431,7 @@ impl VM {
         }
     }
 
-    /// operand1(スタック1番目) == 0
+    /// 0x15: operand1(スタック1番目) == 0
     fn op_is_zero(&mut self) {
         self.consume_gas(3);
         self.push_asm("ISZERO");
@@ -480,9 +482,17 @@ impl VM {
         self.push(result);
     }
 
+    /// 0x1a: operand2(スタック2番目)のoperand1バイト目を取る
     fn op_byte(&mut self) {
+        // y = (operand2 >> (248 - operand1 * 8)) & 0xFF
+        self.consume_gas(3);
         self.push_asm("BYTE");
-        not_implement_panic();
+        let operand1 = self.pop();
+        let operand2 = self.pop();
+        let mask = U256::from(0xff);
+        let index = 248 - (operand1.as_u32() as usize) * 8;
+        let result = (operand2 >> index) & mask;
+        self.push(result);
     }
 
     fn op_shl(&mut self) {
@@ -511,13 +521,19 @@ impl VM {
 
 /// 0x30: 実行環境に関する操作 その1
 impl VM {
+    /// 0x30: address of the executing contract
     fn op_address(&mut self) {
+        self.consume_gas(2);
         self.push_asm("ADDRESS");
-        not_implement_panic();
+        let address = util::h160_to_u256(&self.env.code_owner);
+        self.push(address);
     }
 
+    /// 0x31: Get balance of the given account.
     fn op_balance(&mut self) {
+        self.consume_gas(400);
         self.push_asm("BALANCE");
+        let address = util::u256_to_h160(&self.pop());
         not_implement_panic();
     }
 

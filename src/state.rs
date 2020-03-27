@@ -1,11 +1,6 @@
 //! Ethereum state
 //!
 //! Ethereumにおけるステートを表現するモジュール
-
-extern crate ethereum_types;
-extern crate serde;
-extern crate serde_json;
-extern crate sha3;
 use super::util;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;

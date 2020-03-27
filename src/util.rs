@@ -3,8 +3,8 @@
 //! # util.rs
 //!
 //! ユーティリティ関数を集めたモジュール
-
 use ethereum_types::H160;
+use ethereum_types::U256;
 use std::str::FromStr;
 
 pub fn str_to_bytes(src: &str) -> Vec<u8> {
@@ -36,4 +36,18 @@ pub fn not_implement_panic() {
 
 pub fn to_h160(s: &str) -> H160 {
     return H160::from_str(s).unwrap();
+}
+
+pub fn u256_to_h160(u: &U256) -> H160 {
+    let mut bytes: [u8; 32] = [0; 32];
+    u.to_big_endian(&mut bytes);
+    let result = H160::from_slice(&bytes);
+    return result;
+}
+
+/// convert H160 into U256
+pub fn h160_to_u256(h: &H160) -> U256 {
+    let bytes: &[u8; 20] = h.as_fixed_bytes();
+    let result = U256::from_big_endian(bytes);
+    return result;
 }

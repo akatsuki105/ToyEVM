@@ -1,4 +1,8 @@
+extern crate ethereum_types;
 extern crate python_input;
+extern crate serde;
+extern crate serde_json;
+extern crate sha3;
 
 use python_input::input;
 
