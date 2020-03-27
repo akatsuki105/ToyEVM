@@ -534,6 +534,7 @@ impl VM {
         self.consume_gas(400);
         self.push_asm("BALANCE");
         let address = util::u256_to_h160(&self.pop());
+        // TODO: balanceを取得できるようにVMの状態を修正する
         not_implement_panic();
     }
 
@@ -543,8 +544,9 @@ impl VM {
     }
 
     fn op_caller(&mut self) {
+        self.consume_gas(2);
         self.push_asm("CALLER");
-        not_implement_panic();
+        self.push(util::h160_to_u256(&self.env.sender));
     }
 
     fn op_callvalue(&mut self) {
