@@ -1,4 +1,4 @@
-# Truffle のテストコード
+# WRITING TESTS IN JAVASCRIPT
 
 **これは[WRITING TESTS IN JAVASCRIPT](https://www.trufflesuite.com/docs/truffle/testing/writing-tests-in-javascript)を和訳したものです。**
 
@@ -53,12 +53,12 @@ contract abstractions の利用についてより情報が欲しい場合は、�
 // ./test/metacoin.js
 const MetaCoin = artifacts.require("MetaCoin"); // これでMetaCoinコントラクトとの交信が可能に
 
-contract("MetaCoin", accounts => {
+contract("MetaCoin", (accounts) => {
   // accounts: 利用可能なEthereumアカウントのリスト
   it("should put 10000 MetaCoin in the first account", () =>
     MetaCoin.deployed()
-      .then(instance => instance.getBalance.call(accounts[0]))
-      .then(balance => {
+      .then((instance) => instance.getBalance.call(accounts[0]))
+      .then((balance) => {
         assert.equal(
           balance.valueOf(),
           10000,
@@ -72,15 +72,15 @@ contract("MetaCoin", accounts => {
     let metaCoinEthBalance;
 
     return MetaCoin.deployed()
-      .then(instance => {
+      .then((instance) => {
         meta = instance;
         return meta.getBalance.call(accounts[0]);
       })
-      .then(outCoinBalance => {
+      .then((outCoinBalance) => {
         metaCoinBalance = outCoinBalance.toNumber();
         return meta.getBalanceInEth.call(accounts[0]);
       })
-      .then(outCoinBalanceEth => {
+      .then((outCoinBalanceEth) => {
         metaCoinEthBalance = outCoinBalanceEth.toNumber();
       })
       .then(() => {
@@ -107,24 +107,24 @@ contract("MetaCoin", accounts => {
     const amount = 10;
 
     return MetaCoin.deployed()
-      .then(instance => {
+      .then((instance) => {
         meta = instance;
         return meta.getBalance.call(account_one);
       })
-      .then(balance => {
+      .then((balance) => {
         account_one_starting_balance = balance.toNumber();
         return meta.getBalance.call(account_two);
       })
-      .then(balance => {
+      .then((balance) => {
         account_two_starting_balance = balance.toNumber();
         return meta.sendCoin(account_two, amount, { from: account_one });
       })
       .then(() => meta.getBalance.call(account_one))
-      .then(balance => {
+      .then((balance) => {
         account_one_ending_balance = balance.toNumber();
         return meta.getBalance.call(account_two);
       })
-      .then(balance => {
+      .then((balance) => {
         account_two_ending_balance = balance.toNumber();
 
         assert.equal(
@@ -159,7 +159,7 @@ contract("MetaCoin", accounts => {
 ```js
 const MetaCoin = artifacts.require("MetaCoin");
 
-contract("2nd MetaCoin test", async accounts => {
+contract("2nd MetaCoin test", async (accounts) => {
   it("should put 10000 MetaCoin in the first account", async () => {
     let instance = await MetaCoin.deployed();
     let balance = await instance.getBalance.call(accounts[0]);
